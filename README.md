@@ -53,7 +53,8 @@
 - I learnt that blocks contain transactions, and each transaction still follows the basic idea of inputs → outputs, even if the structure looks more complex.
 - I understood that the testnet uses a different address prefix (ckt), which shows it’s not the main network.
 - I also learnt that there are built-in scripts (smart contracts) on CKB that handle things like ownership and multi-signature, even if I don’t fully understand them yet.
-<img width="1782" height="800" alt="image" src="https://github.com/user-attachments/assets/1657ac62-907d-4365-86c6-5d328f3f6350" />
+<img width="1866" height="931" alt="image" src="https://github.com/user-attachments/assets/c6ff2d9d-8aac-4d55-a1c6-6cfdadb3112e" />
+
 
 
 
