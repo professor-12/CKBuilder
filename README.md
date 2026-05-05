@@ -38,6 +38,14 @@
 - I also understood that since storage is tied to tokens, **on-chain space is valuable and not cheap**, which is why CKB is called a “Common Knowledge Base.”
 - I learnt about the 2 rules of transactions.
 
+<img width="1315" height="492" alt="image" src="https://github.com/user-attachments/assets/042513d6-4748-4715-b813-34ea42c68eff" />
+<img width="1782" height="800" alt="image" src="https://github.com/user-attachments/assets/bc28febd-a5ca-4bfe-818f-cf18597ccbb2" />
+<img width="1782" height="800" alt="image" src="https://github.com/user-attachments/assets/5fecefc2-9ad5-4ed1-a98c-5d94f616183b" />
+
+
+
+
+
 ---
 
 ## Second Lesson
