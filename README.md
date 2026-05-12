@@ -1,7 +1,7 @@
 # Builder Track: Weekly Report (Week 1)
 
 **Name:** Emmanuel Badejo  
-**Week ending:** 2 May 2026
+**Week ending:** 5 May 2026.
 
 ---
 
@@ -45,55 +45,21 @@
 ---
 
 ## Second Lesson
+**Connecting to a wallet**
+- I learnt how to connect a wallet using MetaMask and interact with the CKB testnet.
+- I understood that when a wallet shows a CKB balance, it actually means the total capacity of all the live cells the wallet controls.
+- I learnt that I was given 10 live cells, each with a fixed capacity, and I can fetch or view them individually.
+- I now understand that live cells are the usable assets, and they determine both my balance and how much storage I have on-chain.
+- I learnt that blocks contain transactions, and each transaction still follows the basic idea of inputs → outputs, even if the structure looks more complex.
+- I understood that the testnet uses a different address prefix (ckt), which shows it’s not the main network.
+- I also learnt that there are built-in scripts (smart contracts) on CKB that handle things like ownership and multi-signature, even if I don’t fully understand them yet.
+<img width="1866" height="931" alt="image" src="https://github.com/user-attachments/assets/c6ff2d9d-8aac-4d55-a1c6-6cfdadb3112e" />
+<img width="1312" height="619" alt="image" src="https://github.com/user-attachments/assets/f0041315-188b-4af3-9d6f-914631176581" />
+<img width="1037" height="615" alt="image" src="https://github.com/user-attachments/assets/fb0ffec6-8eb3-4946-86b3-aaaf961a274a" />
+<img width="1845" height="937" alt="image" src="https://github.com/user-attachments/assets/a798f634-2af8-4c4b-a770-4ac0fb8dd218" />
+<img width="1864" height="833" alt="image" src="https://github.com/user-attachments/assets/91c7ea56-c705-455b-8afe-4a515999a3ba"
+
+## I am stuck in trying to sign a transaction still trying to wrap my head around it..
 
 
-
-
-
-## What stuck this week
-
-- CCC gives you one place to start from when wiring a web app to CKB instead of figuring out every piece alone.
-- `pnpm create ccc-app my-ccc-app` worked and gave me a React project I could open and poke around in.
-- The App and Playground were handy for quick tries before dealing with a full local node.
-- **offCKB** for a local CKB node did not work end-to-end yet; I need more time on the errors.
-
----
-
-## Practical progress
-
-- Ran `pnpm create ccc-app my-ccc-app` and looked through the `my-ccc-app` folder (entry files, config, where scripts live).
-- Clicked through scenarios in the CCC App and tried to match what I saw to the theory bits on cells and transactions, though I am still halfway there.
-- Changed a few things in the Playground to see what breaks and what passes.
-- Tried **offCKB** from the quick-start docs; hit setup/run errors, saved the messages, started reading the troubleshooting parts of the docs.
-
----
-
-## Environment
-
-- **Node.js** and **pnpm** on **Linux (WSL2)**.
-- `**my-ccc-app`** as the main test project.
-- **offCKB**: install/run not finished; still debugging.
-
----
-
-## Progress images
-
-Screenshots of CKB Academy progress and setup are below.
-
-CKB progress 1  
-CKB progress 2  
-CKB progress 3  
-CKB progress 4  
-CKB progress 5  
-CKB progress 6  
-CKB progress 7  
-CKB progress 8
-
----
-
-## Next week
-
-- Get **offCKB** working or follow whatever alternative the docs suggest if I stay stuck.
-- Continue the academy theory modules.
-- Maybe one short note describing a single transaction path once I understand it better.
 
