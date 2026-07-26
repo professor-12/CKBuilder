@@ -1,0 +1,12 @@
+{
+  "name": "ckb-action-links",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Share a CKB transaction as a URL",
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "test": "pnpm --filter @ckb-action-links/sdk test",
+    "typecheck": "pnpm -r typecheck",
+    "dev": "pnpm --filter web dev"
+  }
+}

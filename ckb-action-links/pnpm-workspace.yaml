@@ -1,0 +1,6 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+allowBuilds:
+  # Next.js image optimiser. This app serves no images, so skip the native build.
+  sharp: false
