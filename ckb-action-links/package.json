@@ -8,6 +8,7 @@
     "test": "pnpm --filter @ckb-action-links/sdk test",
     "typecheck": "pnpm -r typecheck",
     "dev": "pnpm --filter web dev",
-    "build": "pnpm --filter web build"
+    "build": "pnpm --filter web build",
+    "start": "pnpm --filter web start"
   }
 }
