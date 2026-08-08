@@ -217,6 +217,32 @@ Extended the home page to explain the two kinds of link and to point at the insp
 
 ---
 
+## Rebuilding the Visual Design
+
+Threw out the original stylesheet after concluding that it looked like a default rather than a decision — a blue accent, rounded cards, and the generic spacing that every framework starter ships with.
+
+Rebuilt it as a monochrome system with no hue anywhere, which forced hierarchy to be carried by weight, scale, and inversion instead of by tinted panels.
+
+Learned that this suits a signing surface better than colour did. The reader's entire job on that page is to check an address and a number, and every coloured panel competing for attention was contrast taken away from those two things.
+
+Reserved solid black fill for exactly one meaning — a refusal — so the loudest thing the interface can do is also the rarest.
+
+Replaced the system font stack with three typefaces, each given one job: a serif for headings, a tight grotesque for interface text, and a monospace for anything that is a value.
+
+Learned that monospace on addresses and amounts is a correctness decision rather than a stylistic one, since tabular figures keep digits aligned between two amounts and an unambiguous face keeps a zero from reading as an O.
+
+Self-hosted all three at build time through the framework's font pipeline, because a page that makes a point of contacting no server should not be fetching its typefaces from someone else's.
+
+Verified that the fonts ship with metric-compatible fallbacks generated at build time, so the page does not reflow when they finish loading.
+
+Rebuilt the components that had been carrying the old look: buttons with a real inverted primary state, a segmented control that fills solid when selected, inputs that thicken rather than redden when invalid, and hairline borders throughout instead of filled cards.
+
+Gave the network prefix of every address its own weight and rule, since `ckb1` against `ckt1` is the one part of an address whose meaning a reader can check at a glance.
+
+Kept the QR code dark-on-light in both colour schemes, which stopped being a compromise once the rest of the palette was monochrome too.
+
+---
+
 ## Verification
 
 Ran the full suite: sixty-four tests passing, up from thirty-six, covering the new action's round trip, its bounds, the payer's amount, the claim type, and five new builder refusals.
@@ -239,7 +265,9 @@ No transaction has been signed or broadcast. That was true last week and is stil
 
 The successful path through the builder — collecting inputs, estimating the fee, and summarising a real transaction — has still never run against a funded account, which means this week's summary rewrite is reasoned and typed but not observed. It needs a funded Devnet account through OffCKB.
 
-Nothing was driven through a browser this week. The pages were checked by serving the production build and reading what they render, not by clicking through them, so the interface work is verified as far as markup and types and no further.
+Nothing was driven through a browser this week. The pages were checked by serving the production build and reading what they render, not by clicking through them, so the interface work is verified as far as markup, types, and shipped assets, and no further.
+
+The redesign in particular has been verified structurally — the stylesheet compiles, the three typefaces download and are served from the app's own origin, and every route responds — but nobody has looked at it. That is the next thing to do, not something to assume.
 
 Mainnet remains closed. The security checklist now has every item checked except the three that require running against a real wallet, and those three are the gate.
 
@@ -260,3 +288,6 @@ Mainnet remains closed. The security checklist now has every item checked except
 * Deriving state from the current time on every render silently changes a link between the moment it is read and the moment it is shared.
 * A base64url payload cannot use QR's alphanumeric mode, so the schema's size limit and the QR format's capacity are two different ceilings that have to be reconciled in the interface.
 * A passing test suite is not a passing build; the typecheck found an error in a test file that the test run had reported as green.
+* Removing colour from a signing surface increased its clarity rather than reducing it, because hierarchy built from weight, scale, and inversion leaves the address and the amount as the only things competing for attention.
+* Reserving one visual treatment — solid fill — for one meaning makes the interface's loudest signal trustworthy, which a palette of tinted panels cannot do.
+* Choosing a typeface for a money interface is partly a correctness decision: tabular figures align digits between two amounts, and an unambiguous monospace stops a zero reading as a letter.

@@ -1,66 +1,77 @@
 /*
- * Design tokens.
+ * Design system.
  *
- * This is a signing surface, so the visual job is verification, not decoration:
- * the amount and the recipient must be the two things the eye lands on, and
- * nothing else should compete with them.
+ * Monochrome, deliberately. This is a signing surface: the reader's job is to
+ * verify an address and a number, and colour spent on decoration is contrast
+ * taken away from those two things. With no hues in play, hierarchy has to be
+ * carried by weight, scale, and inversion — which turns out to be louder than
+ * a tinted panel, not quieter. The one thing that ever fills a solid black
+ * block is a refusal.
  */
 
 :root {
-  color-scheme: dark light;
+  color-scheme: light dark;
 
-  --bg: #0a0c10;
-  --surface: #11141a;
-  --surface-2: #171b23;
-  --border: #232833;
-  --border-strong: #2f3643;
+  /* Ink: text, from highest contrast down. */
+  --ink-0: #0a0a0a;
+  --ink-1: #52525b;
+  --ink-2: #7c7c85;
+  --ink-3: #a8a8b0;
 
-  --text: #e8ecf2;
-  --text-2: #b3bccb;
-  --muted: #7d8798;
+  /* Paper: surfaces, from the page up. */
+  --paper-0: #ffffff;
+  --paper-1: #fafafa;
+  --paper-2: #f2f2f3;
+  --paper-3: #e9e9ea;
 
-  --accent: #4c8dff;
-  --accent-hover: #6ba0ff;
-  --accent-fg: #ffffff;
-  --accent-dim: rgba(76, 141, 255, 0.12);
+  /* Hairlines. Three weights is enough for any border in the system. */
+  --line-1: rgb(10 10 10 / 0.08);
+  --line-2: rgb(10 10 10 / 0.14);
+  --line-3: rgb(10 10 10 / 0.26);
 
-  --danger: #ff6b6b;
-  --danger-dim: rgba(255, 107, 107, 0.1);
-  --warn: #e3b341;
-  --warn-dim: rgba(227, 179, 65, 0.09);
-  --ok: #4ade80;
-  --ok-dim: rgba(74, 222, 128, 0.1);
+  /* Inverted pair, for primary actions and refusals. */
+  --invert-bg: #0a0a0a;
+  --invert-fg: #ffffff;
 
-  --radius: 12px;
-  --radius-sm: 8px;
-  --measure: 34rem;
+  --shadow-sm: 0 1px 2px rgb(10 10 10 / 0.05);
+  --shadow-md: 0 4px 16px -4px rgb(10 10 10 / 0.1);
+  --shadow-lg: 0 16px 48px -12px rgb(10 10 10 / 0.14);
 
-  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
+  --r-xs: 6px;
+  --r-sm: 9px;
+  --r-md: 13px;
+  --r-lg: 18px;
+
+  --measure: 33rem;
+  --wide: 47rem;
+
+  --sans: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --serif: var(--font-serif), ui-serif, Georgia, "Times New Roman", serif;
+  --mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
-@media (prefers-color-scheme: light) {
+@media (prefers-color-scheme: dark) {
   :root {
-    --bg: #fbfcfd;
-    --surface: #ffffff;
-    --surface-2: #f5f7fa;
-    --border: #e4e8ee;
-    --border-strong: #d3d9e2;
+    --ink-0: #fbfbfb;
+    --ink-1: #a1a1a8;
+    --ink-2: #71717a;
+    --ink-3: #4d4d55;
 
-    --text: #0f1420;
-    --text-2: #3c4657;
-    --muted: #667085;
+    --paper-0: #000000;
+    --paper-1: #0b0b0c;
+    --paper-2: #141416;
+    --paper-3: #1d1d20;
 
-    --accent: #2563eb;
-    --accent-hover: #1d4ed8;
-    --accent-dim: rgba(37, 99, 235, 0.07);
+    --line-1: rgb(255 255 255 / 0.09);
+    --line-2: rgb(255 255 255 / 0.16);
+    --line-3: rgb(255 255 255 / 0.32);
 
-    --danger: #d92d20;
-    --danger-dim: rgba(217, 45, 32, 0.06);
-    --warn: #b54708;
-    --warn-dim: rgba(181, 71, 8, 0.06);
-    --ok: #067647;
-    --ok-dim: rgba(6, 118, 71, 0.07);
+    --invert-bg: #fbfbfb;
+    --invert-fg: #000000;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.6);
+    --shadow-md: 0 4px 16px -4px rgb(0 0 0 / 0.7);
+    --shadow-lg: 0 16px 48px -12px rgb(0 0 0 / 0.8);
   }
 }
 
@@ -79,35 +90,60 @@ body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--paper-0);
+  color: var(--ink-0);
   font-family: var(--sans);
   font-size: 15px;
   line-height: 1.6;
+  letter-spacing: -0.006em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv05" 1;
+}
+
+/* A single soft lift behind the fold, so a pure-flat page still has depth. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: 60vh;
+  background: radial-gradient(90% 100% at 50% 0%, var(--paper-1), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+::selection {
+  background: var(--invert-bg);
+  color: var(--invert-fg);
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--ink-0);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--r-xs);
 }
 
 /* ── Shell ─────────────────────────────────────────────────────────────── */
 
 .shell {
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg) 80%, transparent);
-  backdrop-filter: blur(8px);
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 20;
+  border-bottom: 1px solid var(--line-1);
+  background: color-mix(in srgb, var(--paper-0) 72%, transparent);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
 }
 
 .shell-inner {
-  max-width: 64rem;
+  max-width: var(--wide);
   margin: 0 auto;
-  padding: 0.85rem 1.25rem;
+  padding: 0.9rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -117,35 +153,56 @@ body {
 .wordmark {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.55rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  font-size: 0.92rem;
-  letter-spacing: -0.01em;
-  color: var(--text);
+  letter-spacing: -0.022em;
+  color: var(--ink-0);
   text-decoration: none;
 }
 
-.wordmark-dot {
-  width: 0.6rem;
-  height: 0.6rem;
-  border-radius: 50%;
-  background: var(--accent);
+.wordmark em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+.wordmark-mark {
+  width: 0.72rem;
+  height: 0.72rem;
   flex: none;
+  background: var(--ink-0);
+  border-radius: 2px;
+  transform: rotate(45deg);
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.wordmark:hover .wordmark-mark {
+  transform: rotate(135deg);
 }
 
 .shell nav {
   display: flex;
-  gap: 1.25rem;
-  font-size: 0.88rem;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .shell nav a {
-  color: var(--muted);
+  color: var(--ink-2);
   text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--r-xs);
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .shell nav a:hover {
-  color: var(--text);
+  color: var(--ink-0);
+  background: var(--paper-2);
 }
 
 .page {
@@ -153,162 +210,215 @@ body {
   width: 100%;
   max-width: var(--measure);
   margin: 0 auto;
-  padding: 3.5rem 1.25rem 6rem;
+  padding: 4.5rem 1.5rem 7rem;
 }
 
 .page-wide {
-  max-width: 46rem;
+  max-width: var(--wide);
 }
 
 .foot {
-  border-top: 1px solid var(--border);
-  padding: 1.5rem 1.25rem;
-  text-align: center;
-  font-size: 0.8rem;
-  color: var(--muted);
+  border-top: 1px solid var(--line-1);
+  padding: 2rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.005em;
+  color: var(--ink-2);
+}
+
+.foot-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--ink-3);
 }
 
 /* ── Type ──────────────────────────────────────────────────────────────── */
 
 h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.25;
-  margin: 0 0 0.4rem;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(2.15rem, 6.5vw, 2.9rem);
+  line-height: 1.04;
+  letter-spacing: -0.021em;
+  margin: 0 0 0.75rem;
+  text-wrap: balance;
 }
 
 h2 {
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: var(--muted);
-  margin: 2.25rem 0 0.75rem;
+  color: var(--ink-2);
+  margin: 3rem 0 0.9rem;
 }
 
 p {
   margin: 0 0 1rem;
-  color: var(--text-2);
+  color: var(--ink-1);
 }
 
 .lede {
-  font-size: 1rem;
-  color: var(--muted);
-  margin-bottom: 2rem;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  color: var(--ink-1);
+  margin-bottom: 2.25rem;
+  text-wrap: pretty;
 }
 
 .muted {
-  color: var(--muted);
+  color: var(--ink-2);
 }
 
 .small {
-  font-size: 0.85rem;
+  font-size: 0.83rem;
 }
 
 .mono {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "zero" 1;
+  letter-spacing: -0.02em;
+}
+
+strong {
+  font-weight: 600;
+  color: var(--ink-0);
 }
 
 a {
-  color: var(--accent);
-  text-underline-offset: 0.2em;
+  color: var(--ink-0);
+  text-decoration-color: var(--line-3);
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
+  transition: text-decoration-color 0.15s ease;
 }
 
-/* ── Chip ──────────────────────────────────────────────────────────────── */
+a:hover {
+  text-decoration-color: var(--ink-0);
+}
+
+/* ── Chips ─────────────────────────────────────────────────────────────── */
 
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  padding: 0.2rem 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  padding: 0.28rem 0.6rem 0.28rem 0.55rem;
   border-radius: 999px;
-  border: 1px solid var(--border-strong);
-  color: var(--muted);
-  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  color: var(--ink-1);
+  background: var(--paper-1);
+  white-space: nowrap;
 }
 
 .chip-dot {
-  width: 0.4rem;
-  height: 0.4rem;
+  width: 0.36rem;
+  height: 0.36rem;
   border-radius: 50%;
   background: currentColor;
   flex: none;
 }
 
+/* Mainnet and refusals are the two states that get the full inversion. */
 .chip-live,
-.chip-warn {
-  color: var(--warn);
-  border-color: color-mix(in srgb, var(--warn) 40%, transparent);
-  background: var(--warn-dim);
+.chip-danger {
+  background: var(--invert-bg);
+  border-color: var(--invert-bg);
+  color: var(--invert-fg);
 }
 
-.chip-danger {
-  color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
-  background: var(--danger-dim);
+.chip-warn {
+  color: var(--ink-0);
+  border-color: var(--ink-0);
+  background: transparent;
 }
 
 .chip-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1.25rem;
 }
 
-/* ── Card ──────────────────────────────────────────────────────────────── */
+/* ── Cards ─────────────────────────────────────────────────────────────── */
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.35rem;
+  background: var(--paper-1);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-md);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .card + .card {
-  margin-top: 0.85rem;
+  margin-top: 0.75rem;
 }
 
 .card-quiet {
-  background: var(--surface-2);
-  border-style: dashed;
+  background: transparent;
+  border-style: solid;
+  border-color: var(--line-2);
+  box-shadow: none;
 }
 
 /* The amount, as the single loudest thing on the page. */
 
 .hero {
   text-align: center;
-  padding: 0.5rem 0 1.35rem;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 1.15rem;
+  padding: 0.75rem 0 1.6rem;
+  border-bottom: 1px solid var(--line-1);
+  margin-bottom: 1.4rem;
 }
 
 .hero-caption {
-  font-size: 0.8rem;
-  color: var(--muted);
-  margin-bottom: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin-bottom: 0.65rem;
 }
 
 .hero-amount {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
-  font-size: clamp(2rem, 8vw, 2.75rem);
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+  font-feature-settings: "zero" 1;
+  font-size: clamp(2.5rem, 11vw, 3.6rem);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 1;
+  color: var(--ink-0);
   word-break: break-all;
 }
 
 .hero-unit {
-  font-size: 0.45em;
-  font-weight: 500;
-  color: var(--muted);
-  margin-left: 0.35rem;
-  letter-spacing: 0;
+  font-family: var(--sans);
+  font-size: 0.28em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin-left: 0.5rem;
+  vertical-align: 0.35em;
+}
+
+.hero-note {
+  font-family: var(--serif);
+  font-size: clamp(1.35rem, 5vw, 1.7rem);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  color: var(--ink-0);
 }
 
 /* ── Detail rows ───────────────────────────────────────────────────────── */
@@ -317,13 +427,13 @@ a {
   margin: 0;
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.7rem 1.5rem;
+  gap: 0.75rem 1.5rem;
   align-items: baseline;
 }
 
 .details dt {
-  font-size: 0.85rem;
-  color: var(--muted);
+  font-size: 0.83rem;
+  color: var(--ink-2);
   white-space: nowrap;
 }
 
@@ -332,17 +442,22 @@ a {
   text-align: right;
   font-variant-numeric: tabular-nums;
   word-break: break-word;
+  color: var(--ink-1);
 }
 
 /* Applied to the dt and dd directly — they are grid children, so a wrapper
    would break the two-column alignment. */
 .details-total {
-  border-top: 1px solid var(--border);
-  margin-top: 0.4rem;
-  padding-top: 0.8rem;
+  border-top: 1px solid var(--line-1);
+  margin-top: 0.35rem;
+  padding-top: 0.9rem;
   font-weight: 600;
   font-size: 0.95rem;
-  color: var(--text);
+  color: var(--ink-0);
+}
+
+.details dd.details-total {
+  color: var(--ink-0);
 }
 
 .details dt.details-total {
@@ -358,51 +473,70 @@ a {
  */
 .addr {
   font-family: var(--mono);
-  font-size: 0.82rem;
-  line-height: 1.9;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.7rem 0.85rem;
+  font-size: 0.795rem;
+  letter-spacing: -0.01em;
+  line-height: 2;
+  color: var(--ink-0);
+  background: var(--paper-2);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-sm);
+  padding: 0.75rem 0.9rem;
   display: flex;
   flex-wrap: wrap;
-  gap: 0 0.55rem;
+  gap: 0 0.5rem;
   word-break: break-all;
 }
 
 .addr-label {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-  margin-bottom: 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin-bottom: 0.55rem;
+  min-height: 1.75rem;
 }
 
 .addr-label-end {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.65rem;
   flex: none;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-weight: 500;
+  font-size: 0.83rem;
+  color: var(--ink-0);
 }
 
+/*
+ * The first group is the network prefix — `ckb1` or `ckt1` — which is the one
+ * part of an address whose meaning a reader can check at a glance. It gets
+ * weight and a rule rather than a filled block, so it leads the eye without
+ * competing with the characters that actually have to be compared.
+ */
 .addr-prefix {
-  color: var(--accent);
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--ink-0);
 }
 
 /* ── Notices ───────────────────────────────────────────────────────────── */
 
 .notice {
   display: flex;
-  gap: 0.7rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid;
-  padding: 0.8rem 0.95rem;
-  font-size: 0.88rem;
+  gap: 0.75rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-2);
+  background: var(--paper-1);
+  color: var(--ink-0);
+  padding: 0.9rem 1rem;
+  font-size: 0.865rem;
   line-height: 1.5;
-  margin: 0 0 1.25rem;
+  margin: 0 0 1.5rem;
 }
 
 .notice p {
@@ -410,27 +544,33 @@ a {
   color: inherit;
 }
 
+.notice p + p {
+  margin-top: 0.5rem;
+}
+
 .notice-icon {
   flex: none;
-  margin-top: 0.1rem;
+  margin-top: 0.12rem;
 }
 
+/* Warnings keep the page's colours and take a heavier rule. */
 .notice-warn {
-  border-color: color-mix(in srgb, var(--warn) 35%, transparent);
-  background: var(--warn-dim);
-  color: var(--warn);
+  border-color: var(--line-2);
+  border-left: 3px solid var(--ink-0);
+  background: var(--paper-2);
 }
 
+/* A refusal is the only thing that ever fills solid. */
 .notice-danger {
-  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
-  background: var(--danger-dim);
-  color: var(--danger);
+  background: var(--invert-bg);
+  border-color: var(--invert-bg);
+  color: var(--invert-fg);
 }
 
 .notice-ok {
-  border-color: color-mix(in srgb, var(--ok) 35%, transparent);
-  background: var(--ok-dim);
-  color: var(--ok);
+  border-color: var(--line-2);
+  background: transparent;
+  color: var(--ink-1);
 }
 
 /* ── Buttons ───────────────────────────────────────────────────────────── */
@@ -438,59 +578,80 @@ a {
 .btn {
   font: inherit;
   font-weight: 500;
-  font-size: 0.92rem;
+  font-size: 0.885rem;
+  letter-spacing: -0.011em;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
-  color: var(--text);
-  padding: 0.7rem 1.15rem;
+  min-height: 2.75rem;
+  padding: 0 1.15rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-2);
+  background: var(--paper-0);
+  color: var(--ink-0);
   cursor: pointer;
   text-decoration: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.06s ease;
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.08s ease;
 }
 
 .btn:hover:not(:disabled) {
-  background: var(--surface-2);
-  border-color: var(--muted);
+  border-color: var(--line-3);
+  background: var(--paper-2);
+  box-shadow: var(--shadow-md);
 }
 
 .btn:active:not(:disabled) {
   transform: translateY(1px);
+  box-shadow: none;
 }
 
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 0.38;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-fg);
+  background: var(--invert-bg);
+  border-color: var(--invert-bg);
+  color: var(--invert-fg);
   font-weight: 600;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: var(--invert-bg);
+  border-color: var(--invert-bg);
+  color: var(--invert-fg);
+  box-shadow: var(--shadow-lg);
 }
 
 .btn-block {
   width: 100%;
 }
 
+.btn-mini {
+  min-height: 1.75rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0 0.6rem;
+  border-radius: var(--r-xs);
+  box-shadow: none;
+}
+
 .actions {
   display: flex;
-  gap: 0.65rem;
+  gap: 0.6rem;
   flex-wrap: wrap;
-  margin-top: 1.5rem;
+  margin-top: 1.75rem;
 }
 
 .actions-stack {
@@ -500,97 +661,123 @@ a {
 /* ── Form ──────────────────────────────────────────────────────────────── */
 
 .field {
-  margin-bottom: 1.1rem;
+  margin-bottom: 1.35rem;
 }
 
 .field label,
 .field-caption {
   display: block;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-2);
-  margin-bottom: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin-bottom: 0.5rem;
 }
 
 .field-hint {
-  font-size: 0.8rem;
-  color: var(--muted);
-  margin: 0.35rem 0 0;
+  font-size: 0.795rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+  margin: 0.45rem 0 0;
 }
 
 input,
 textarea,
 select {
   font: inherit;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
+  letter-spacing: -0.008em;
   width: 100%;
-  padding: 0.6rem 0.75rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-strong);
-  background: var(--bg);
-  color: var(--text);
+  min-height: 2.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-2);
+  background: var(--paper-0);
+  color: var(--ink-0);
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+input.mono,
+textarea.mono {
+  font-family: var(--mono);
+  font-size: 0.83rem;
+}
+
+input:hover:not(:focus),
+textarea:hover:not(:focus) {
+  border-color: var(--line-3);
 }
 
 input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-dim);
+  border-color: var(--ink-0);
+  box-shadow: 0 0 0 3px var(--line-1);
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: var(--muted);
-  opacity: 0.7;
+  color: var(--ink-3);
 }
 
 textarea {
   resize: vertical;
+  line-height: 1.6;
 }
 
 .segmented {
   display: flex;
-  gap: 0.35rem;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.25rem;
+  gap: 0.2rem;
+  background: var(--paper-2);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-sm);
+  padding: 0.22rem;
 }
 
 .segmented button {
   flex: 1;
   font: inherit;
-  font-size: 0.88rem;
+  font-size: 0.83rem;
   font-weight: 500;
-  padding: 0.45rem 0.75rem;
+  letter-spacing: -0.01em;
+  padding: 0.45rem 0.7rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
-  color: var(--muted);
+  color: var(--ink-2);
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  white-space: nowrap;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.segmented button:hover:not([aria-pressed="true"]) {
+  color: var(--ink-0);
 }
 
 .segmented button[aria-pressed="true"] {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.15);
+  background: var(--invert-bg);
+  color: var(--invert-fg);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
 }
 
 /* ── Loading ───────────────────────────────────────────────────────────── */
 
 .spinner {
-  width: 0.9em;
-  height: 0.9em;
-  border: 2px solid currentColor;
+  width: 0.85em;
+  height: 0.85em;
+  border: 1.5px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
   display: inline-block;
-  animation: spin 0.65s linear infinite;
+  animation: spin 0.6s linear infinite;
 }
 
 @keyframes spin {
@@ -600,15 +787,15 @@ textarea {
 }
 
 .skeleton {
-  border-radius: 6px;
+  border-radius: var(--r-xs);
   background: linear-gradient(
     90deg,
-    var(--surface-2) 25%,
-    var(--border) 37%,
-    var(--surface-2) 63%
+    var(--paper-2) 25%,
+    var(--paper-3) 37%,
+    var(--paper-2) 63%
   );
   background-size: 400% 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 
 @keyframes shimmer {
@@ -649,10 +836,15 @@ textarea {
 
 .link-out {
   font-family: var(--mono);
-  font-size: 0.8rem;
-  line-height: 1.7;
+  font-size: 0.765rem;
+  line-height: 1.75;
+  letter-spacing: -0.015em;
   word-break: break-all;
-  color: var(--text-2);
+  color: var(--ink-1);
+  background: var(--paper-2);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-sm);
+  padding: 0.8rem 0.9rem;
 }
 
 .steps {
@@ -665,14 +857,25 @@ textarea {
 .steps li {
   counter-increment: step;
   position: relative;
-  padding-left: 2.1rem;
-  margin-bottom: 1rem;
-  color: var(--text-2);
+  padding-left: 2.4rem;
+  padding-bottom: 1.15rem;
+  color: var(--ink-1);
   font-size: 0.92rem;
 }
 
 .steps li:last-child {
-  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* A hairline rule joining the markers, so the list reads as a sequence. */
+.steps li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 0.79rem;
+  top: 1.75rem;
+  bottom: 0.35rem;
+  width: 1px;
+  background: var(--line-1);
 }
 
 .steps li::before {
@@ -680,14 +883,15 @@ textarea {
   position: absolute;
   left: 0;
   top: 0.05rem;
-  width: 1.45rem;
-  height: 1.45rem;
+  width: 1.6rem;
+  height: 1.6rem;
   border-radius: 50%;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 600;
+  background: var(--paper-0);
+  border: 1px solid var(--line-2);
+  color: var(--ink-1);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 500;
   display: grid;
   place-items: center;
 }
@@ -702,38 +906,38 @@ textarea {
  * naming its source keeps it readable without lending it the page's authority.
  */
 .quote {
-  margin: 0 0 1.5rem;
-  border-left: 3px solid var(--border-strong);
-  padding: 0.15rem 0 0.15rem 1rem;
+  margin: 0 0 1.75rem;
+  border-left: 1px solid var(--line-3);
+  padding: 0.1rem 0 0.1rem 1.15rem;
 }
 
 .quote blockquote {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  color: var(--text-2);
+  gap: 0.3rem;
   overflow-wrap: anywhere;
 }
 
-.quote strong {
-  color: var(--text);
-  font-weight: 600;
+.quote blockquote strong {
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  font-weight: 400;
+  letter-spacing: -0.012em;
+  line-height: 1.25;
+  color: var(--ink-0);
+}
+
+.quote blockquote span {
+  color: var(--ink-1);
+  font-size: 0.92rem;
 }
 
 .quote figcaption {
-  margin-top: 0.45rem;
-  font-size: 0.78rem;
-  color: var(--muted);
-}
-
-/* ── Amounts that are not yet numbers ──────────────────────────────────── */
-
-.hero-note {
-  font-size: 1.05rem;
-  font-weight: 500;
-  color: var(--text);
-  line-height: 1.35;
+  margin-top: 0.6rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
 }
 
 /* ── Form extras ───────────────────────────────────────────────────────── */
@@ -741,7 +945,7 @@ textarea {
 .field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0 0.85rem;
+  gap: 0 0.75rem;
 }
 
 @media (max-width: 26rem) {
@@ -751,32 +955,33 @@ textarea {
 }
 
 .field-error {
-  font-size: 0.8rem;
-  color: var(--danger);
-  margin: 0.35rem 0 0;
+  font-size: 0.795rem;
+  font-weight: 500;
+  color: var(--ink-0);
+  margin: 0.45rem 0 0;
+  padding-left: 0.65rem;
+  border-left: 2px solid var(--ink-0);
 }
 
 input[aria-invalid="true"] {
-  border-color: var(--danger);
+  border-color: var(--ink-0);
+  border-width: 1.5px;
 }
 
 input[aria-invalid="true"]:focus {
-  border-color: var(--danger);
-  box-shadow: 0 0 0 3px var(--danger-dim);
+  box-shadow: 0 0 0 3px var(--line-2);
+}
+
+.empty-slot,
+.result-slot {
+  margin-top: 1.75rem;
 }
 
 .empty-slot {
-  margin-top: 1.5rem;
-}
-
-.result-slot {
-  margin-top: 1.5rem;
-}
-
-.btn-mini {
-  font-size: 0.78rem;
-  padding: 0.25rem 0.6rem;
-  border-radius: 6px;
+  border-style: dashed;
+  border-color: var(--line-2);
+  text-align: center;
+  padding: 2rem 1.5rem;
 }
 
 /*
@@ -786,8 +991,8 @@ input[aria-invalid="true"]:focus {
 .actions-sticky {
   position: sticky;
   bottom: 0;
-  padding: 0.85rem 0 1rem;
-  background: linear-gradient(to bottom, transparent, var(--bg) 18%);
+  padding: 1rem 0 1.25rem;
+  background: linear-gradient(to bottom, transparent, var(--paper-0) 22%);
 }
 
 /* ── QR ────────────────────────────────────────────────────────────────── */
@@ -795,26 +1000,27 @@ input[aria-invalid="true"]:focus {
 .qr-wrap {
   display: flex;
   justify-content: center;
-  margin-bottom: 1.15rem;
+  margin-bottom: 1.4rem;
 }
 
 /*
- * The one element that ignores the colour scheme. A QR code has to stay dark
- * on light for scanners to read it, so it carries its own white card rather
- * than inheriting the page's surface in dark mode.
+ * Always dark-on-light, in both schemes. A QR code rendered light-on-dark is
+ * not reliably scannable, so this is the one element that does not follow the
+ * page — which in a monochrome system costs nothing to look at.
  */
 .qr {
   display: block;
   background: #ffffff;
-  border-radius: var(--radius-sm);
-  padding: 0.5rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  padding: 0.6rem;
   max-width: 100%;
   height: auto;
 }
 
 .qr-fallback {
   text-align: center;
-  margin: 0 0 1.15rem;
+  margin: 0 0 1.4rem;
 }
 
 /* ── Screen-reader announcements ───────────────────────────────────────── */
