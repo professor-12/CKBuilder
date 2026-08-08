@@ -22,6 +22,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 CKB Action Links
               </Link>
               <nav>
+                <Link href="/inspect">Inspect</Link>
                 <Link href="/new">Create a link</Link>
               </nav>
             </div>

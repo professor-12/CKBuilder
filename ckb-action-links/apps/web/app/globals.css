@@ -240,10 +240,24 @@ a {
   flex: none;
 }
 
-.chip-live {
+.chip-live,
+.chip-warn {
   color: var(--warn);
   border-color: color-mix(in srgb, var(--warn) 40%, transparent);
   background: var(--warn-dim);
+}
+
+.chip-danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  background: var(--danger-dim);
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
 }
 
 /* ── Card ──────────────────────────────────────────────────────────────── */
@@ -320,17 +334,19 @@ a {
   word-break: break-word;
 }
 
+/* Applied to the dt and dd directly — they are grid children, so a wrapper
+   would break the two-column alignment. */
 .details-total {
   border-top: 1px solid var(--border);
-  margin-top: 1.1rem;
-  padding-top: 1.1rem;
+  margin-top: 0.4rem;
+  padding-top: 0.8rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text);
 }
 
-.details-total dt,
-.details-total dd {
-  font-weight: 600;
-  font-size: 1rem;
-  color: var(--text);
+.details dt.details-total {
+  white-space: normal;
 }
 
 /* ── Address ───────────────────────────────────────────────────────────── */
@@ -362,6 +378,13 @@ a {
   font-size: 0.85rem;
   color: var(--muted);
   margin-bottom: 0.45rem;
+}
+
+.addr-label-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: none;
 }
 
 .addr-prefix {
@@ -667,4 +690,144 @@ textarea {
   font-weight: 600;
   display: grid;
   place-items: center;
+}
+
+/* ── Attributed text ───────────────────────────────────────────────────── */
+
+/*
+ * Text carried by a link, shown as a quotation.
+ *
+ * It used to be the page's <h1>, which gave attacker-controlled words the one
+ * position a reader is most likely to read as the site speaking. Quoting it and
+ * naming its source keeps it readable without lending it the page's authority.
+ */
+.quote {
+  margin: 0 0 1.5rem;
+  border-left: 3px solid var(--border-strong);
+  padding: 0.15rem 0 0.15rem 1rem;
+}
+
+.quote blockquote {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+.quote strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.quote figcaption {
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ── Amounts that are not yet numbers ──────────────────────────────────── */
+
+.hero-note {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+/* ── Form extras ───────────────────────────────────────────────────────── */
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 0.85rem;
+}
+
+@media (max-width: 26rem) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field-error {
+  font-size: 0.8rem;
+  color: var(--danger);
+  margin: 0.35rem 0 0;
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+input[aria-invalid="true"]:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-dim);
+}
+
+.empty-slot {
+  margin-top: 1.5rem;
+}
+
+.result-slot {
+  margin-top: 1.5rem;
+}
+
+.btn-mini {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+}
+
+/*
+ * Keeps the signing decision reachable without scrolling back down on a phone,
+ * which is where most links get opened. Only the confirm page uses it.
+ */
+.actions-sticky {
+  position: sticky;
+  bottom: 0;
+  padding: 0.85rem 0 1rem;
+  background: linear-gradient(to bottom, transparent, var(--bg) 18%);
+}
+
+/* ── QR ────────────────────────────────────────────────────────────────── */
+
+.qr-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.15rem;
+}
+
+/*
+ * The one element that ignores the colour scheme. A QR code has to stay dark
+ * on light for scanners to read it, so it carries its own white card rather
+ * than inheriting the page's surface in dark mode.
+ */
+.qr {
+  display: block;
+  background: #ffffff;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+  max-width: 100%;
+  height: auto;
+}
+
+.qr-fallback {
+  text-align: center;
+  margin: 0 0 1.15rem;
+}
+
+/* ── Screen-reader announcements ───────────────────────────────────────── */
+
+.sr-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }

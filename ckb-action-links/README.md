@@ -14,13 +14,26 @@ See [PRD.md](PRD.md) for the product requirements, the link format, and the secu
 
 | Milestone | State |
 |---|---|
-| M1 — SDK core (schema, codec, validation) | **Done.** 36 tests passing |
+| M1 — SDK core (schema, codec, validation) | **Done.** 64 tests passing |
 | M2 — Transaction building | Guard paths done and tested; happy path needs a funded devnet run |
-| M3 — Preview page | Scaffolded, builds clean, untested against a real wallet |
-| M4 — Link builder | Scaffolded |
-| M5 — Hardening | Not started |
+| M3 — Preview page | Built. Fail-closed paths done; untested against a real wallet |
+| M4 — Link builder | **Done.** Form, live validation, QR code, copy and share |
+| M5 — Hardening | In progress — see the checklist in [PRD.md](PRD.md) §9 |
 
 Nothing here has been run against a wallet yet. Do not point it at mainnet.
+
+---
+
+## Actions
+
+| Action | What the link says | Who names the amount |
+|---|---|---|
+| `transfer` | Send exactly this much CKB to this address | The creator |
+| `request` | Send what you like to this address, within these limits | The payer |
+
+`request` exists because a link that names no figure cannot commit anyone to one. The
+payer's number is validated by the same code that validates the link's own, and the
+creator's bounds are enforced on top of it.
 
 ---
 
@@ -32,10 +45,12 @@ packages/sdk/     @ckb-action-links/sdk — framework-agnostic TypeScript
   src/codec.ts    encode / decode / parse URLs
   src/validate.ts strict, fail-closed validation
   src/build.ts    intent + signer -> { tx, summary }
+  src/describe.ts wallet-free reading of what a link *claims*
   src/errors.ts   typed, user-presentable error codes
 apps/web/         Next.js — preview/sign page and link builder
-  app/a/          /a   decode, preview, connect, sign
-  app/new/        /new form to generate a link
+  app/a/          /a       decode, preview, connect, sign
+  app/new/        /new     form to generate a link, with QR
+  app/inspect/    /inspect read a link back without a wallet
 ```
 
 ## Running it
@@ -60,3 +75,7 @@ This is the whole security model in one sentence. The failure this prevents is a
 that says one thing while the signed transaction does another, which is silent theft and
 looks correct in testing because both halves are individually right. If you add an action
 type, it goes through `buildAction` or it does not ship.
+
+`describeIntent` is the one thing that reads a link without building anything, and it is
+deliberately weaker: it returns a *claim*, carries no fee and no total, and never sits next
+to a sign button. `/inspect` and the pre-connect view use it. Nothing else may.

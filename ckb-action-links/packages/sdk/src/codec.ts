@@ -94,9 +94,25 @@ export function decodePayload(payload: string): ActionIntent {
     );
   }
 
+  // Two distinct failures, reported distinctly. Folding them together made
+  // every truncated link say "not valid UTF-8", which sent debugging in the
+  // wrong direction — a payload cut mid-share fails base64 decoding, not text
+  // decoding. The user-facing message is the same either way; only the detail
+  // carried on the error differs.
+  let bytes: Uint8Array;
+  try {
+    bytes = fromBase64Url(encoded);
+  } catch {
+    throw new ActionLinkError(
+      "MALFORMED_PAYLOAD",
+      "This link is damaged — it may have been cut short when it was shared.",
+      "payload is not decodable base64url",
+    );
+  }
+
   let json: string;
   try {
-    json = new TextDecoder("utf-8", { fatal: true }).decode(fromBase64Url(encoded));
+    json = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
     throw new ActionLinkError(
       "MALFORMED_PAYLOAD",

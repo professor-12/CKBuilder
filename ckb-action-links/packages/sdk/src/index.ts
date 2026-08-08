@@ -6,10 +6,12 @@ export {
   NETWORKS,
   PROTOCOL_VERSION,
   SHANNONS_PER_CKB,
+  isPayerPriced,
   networkName,
   type ActionIntent,
   type ActionType,
   type Network,
+  type RequestIntent,
   type TransferIntent,
 } from "./intent.ts";
 
@@ -18,10 +20,19 @@ export {
   formatShannonsToCkb,
   isExpired,
   parseAmountToShannons,
+  secondsUntilExpiry,
   validateIntent,
+  validatePayerAmount,
 } from "./validate.ts";
 
 export { buildActionUrl, decodePayload, encodeIntent, parseActionUrl } from "./codec.ts";
+
+export {
+  describeIntent,
+  formatRemaining,
+  type ClaimedBounds,
+  type IntentClaim,
+} from "./describe.ts";
 
 export {
   DEFAULT_FEE_RATE,

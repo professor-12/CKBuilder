@@ -12,7 +12,12 @@ import { describe, it } from "node:test";
 
 import { ccc } from "@ckb-ccc/core";
 
-import { ActionLinkError, buildAction, type TransferIntent } from "../src/index.ts";
+import {
+  ActionLinkError,
+  buildAction,
+  type RequestIntent,
+  type TransferIntent,
+} from "../src/index.ts";
 
 const PRIVATE_KEY = "0x0000000000000000000000000000000000000000000000000000000000000001";
 
@@ -76,6 +81,48 @@ describe("buildAction refuses before touching the chain", () => {
     assert.notEqual(corrupted, TESTNET_ADDRESS);
     await rejectsWith("INVALID_ADDRESS", () =>
       buildAction(transfer({ to: corrupted }), testnetSigner()),
+    );
+  });
+});
+
+describe("the payer's amount reaches the builder intact", () => {
+  const request = (overrides: Partial<RequestIntent> = {}): RequestIntent => ({
+    v: 1,
+    network: "ckt",
+    action: "request",
+    to: TESTNET_ADDRESS,
+    ...overrides,
+  });
+
+  it("refuses to build a request with no amount at all", async () => {
+    await rejectsWith("AMOUNT_REQUIRED", () => buildAction(request(), testnetSigner()));
+  });
+
+  it("refuses an amount outside the link's bounds", async () => {
+    await rejectsWith("AMOUNT_OUT_OF_RANGE", () =>
+      buildAction(request({ min: "500" }), testnetSigner(), { amount: "100" }),
+    );
+  });
+
+  it("refuses an amount for an action that already fixes one", async () => {
+    // Dropping it silently would build a transaction for the link's figure
+    // while the caller believed it had chosen a different one.
+    await rejectsWith("AMOUNT_NOT_ACCEPTED", () =>
+      buildAction(transfer({ amount: "100" }), testnetSigner(), { amount: "1" }),
+    );
+  });
+
+  it("applies the cell minimum to the payer's figure too", async () => {
+    await rejectsWith("BELOW_MIN_CAPACITY", () =>
+      buildAction(request(), testnetSigner(), { amount: "1" }),
+    );
+  });
+
+  it("checks expiry before it asks for an amount", async () => {
+    // Order matters: an expired link must refuse outright rather than first
+    // inviting the payer to type a figure it was never going to accept.
+    await rejectsWith("EXPIRED", () =>
+      buildAction(request({ expiry: 1_000 }), testnetSigner(), { nowSeconds: 1_001 }),
     );
   });
 });

@@ -41,7 +41,27 @@ export interface TransferIntent extends BaseIntent {
   amount: string;
 }
 
-export type ActionIntent = TransferIntent;
+/**
+ * Ask for a payment without fixing the amount — the payer decides.
+ *
+ * The link cannot name a figure the payer has not agreed to, which makes this
+ * the safer half of the pair: a tip jar or donation link carries no number the
+ * signer did not type themselves. Bounds are advisory limits set by the
+ * creator, and are enforced before a transaction is built.
+ */
+export interface RequestIntent extends BaseIntent {
+  action: "request";
+  /** Recipient address. Must carry the same prefix as `network`. */
+  to: string;
+  /** Optional lower bound, decimal CKB string. */
+  min?: string;
+  /** Optional upper bound, decimal CKB string. */
+  max?: string;
+  /** Optional pre-filled figure. The payer may always change it. */
+  suggested?: string;
+}
+
+export type ActionIntent = TransferIntent | RequestIntent;
 
 export type ActionType = ActionIntent["action"];
 
@@ -50,7 +70,10 @@ export type ActionType = ActionIntent["action"];
  * interface above, its field spec in validate.ts, and its builder in build.ts.
  * A payload naming an action absent from this list is rejected outright.
  */
-export const KNOWN_ACTIONS = ["transfer"] as const satisfies readonly ActionType[];
+export const KNOWN_ACTIONS = ["transfer", "request"] as const satisfies readonly ActionType[];
+
+/** True when the payer supplies the amount rather than the link. */
+export const isPayerPriced = (action: ActionType): boolean => action === "request";
 
 /** Limits. Applied before parsing where possible, and again during validation. */
 export const LIMITS = {

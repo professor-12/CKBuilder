@@ -18,7 +18,15 @@ export type ActionErrorCode =
   | "INVALID_ADDRESS"
   | "NETWORK_MISMATCH"
   | "EXPIRED"
-  | "BELOW_MIN_CAPACITY";
+  | "BELOW_MIN_CAPACITY"
+  /** A payer-priced action was built without the payer's amount. */
+  | "AMOUNT_REQUIRED"
+  /** An amount was supplied for an action whose amount the link already fixes. */
+  | "AMOUNT_NOT_ACCEPTED"
+  /** The payer's amount falls outside the bounds the link declares. */
+  | "AMOUNT_OUT_OF_RANGE"
+  /** The built transaction contains an output the summary cannot explain. */
+  | "UNACCOUNTED_OUTPUT";
 
 export class ActionLinkError extends Error {
   readonly code: ActionErrorCode;

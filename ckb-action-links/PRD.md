@@ -1,8 +1,8 @@
 # CKB Action Links — Product Requirements Document
 
 **Author:** Emmanuel Badejo
-**Status:** Draft v0.1
-**Date:** 26 July 2026
+**Status:** Draft v0.2
+**Date:** 26 July 2026 · revised 8 August 2026
 **Project ID:** Idea #22 — Transaction as URL
 
 ---
@@ -131,10 +131,34 @@ adding the next one is a single new file plus a registry entry.
 
 | Action | Status | Description |
 |---|---|---|
-| `transfer` | **v1** | Send a fixed amount of CKB to an address. Covers tipping, invoices, donations. |
-| `transfer-udt` | v1.1 | Send an xUDT token amount. |
+| `transfer` | **v1** | Send a fixed amount of CKB to an address. Covers invoices and fixed prices. |
+| `request` | **v1.1** | Ask for a payment without fixing the amount. The payer names the figure, within optional `min`/`max` bounds. Covers tips, donations, pay-what-you-like. |
+| `transfer-udt` | v1.2 | Send an xUDT token amount. |
 | `mint-dob` | v2 | Mint a Spore DOB into a Cluster. |
 | `attest` | v2 | Create an attestation Cell (depends on Idea #7). |
+
+`request` was promoted ahead of `transfer-udt` because it needs no new on-chain
+knowledge — no token script, no decimals, no cell-collection strategy — and because
+it exercises the part of the design that had never been tested: whether adding an
+action really is a registry entry, a field spec and a builder, or whether that claim
+only held while there was one action.
+
+It also raises a question `transfer` does not. A `request` link carries no amount, so
+the figure comes from the payer at signing time. That number is validated by the same
+code that validates a link's own amounts, and the creator's bounds are enforced on top
+of it. Changing the figure discards the built transaction; there is no path where a
+summary on screen belongs to an amount that is no longer in the box.
+
+### 5.4 Reading a link without a wallet
+
+`describeIntent(intent)` returns an `IntentClaim`: what the link *says*, with no fee,
+no total, and no transaction. It backs `/inspect` and the pre-connect view on `/a`.
+
+The naming is defensive. There is a real gap in the flow — before a wallet is connected
+there is no transaction for SEC-1 to derive a preview from, yet the page still has to
+show something — and the risk is that whatever fills that gap quietly becomes the
+preview. A claim is therefore structurally incapable of impersonating a summary: it
+cannot carry the fields a summary carries, and it never appears beside a sign button.
 
 ---
 
@@ -190,6 +214,25 @@ verify the recipient before signing.* The page must never present a link's `labe
 a way that could be mistaken for the page's own branding — no logos from the payload,
 no rich text, no links inside `note`.
 
+**Position counts as presentation.** The first implementation rendered `label` as the
+page's `<h1>`, which satisfied the escaping rule and broke the intent of it: the
+heading is the one line a reader takes as the site speaking. Text from a payload is
+now quoted and attributed, and the heading is fixed copy the page owns.
+
+### SEC-6 — Expiry is watched, not sampled
+
+An `expiry` checked once, when the transaction is built, protects nothing: a page left
+open past its expiry keeps a live sign button because nothing looks at the clock again.
+The countdown runs for as long as the page is open, a lapse discards the built
+transaction, and the check is repeated at the moment of sending.
+
+### SEC-7 — Every output is accounted for
+
+The summary identifies the output the action was built to create, and requires every
+other output in the transaction to belong to the signer. An output that is neither is
+a refusal, not a footnote. A preview that omits a payment is the same failure as a
+preview that misstates one.
+
 ### SEC-5 — No auto-connect, no auto-sign
 
 Opening a link never triggers a wallet prompt. Wallet connection is an explicit user
@@ -241,19 +284,32 @@ Mainnet is gated on completing the security checklist in §9.
 | **M3 — Preview page** | `/a` route, wallet connect, preview, sign | End-to-end on testnet from a pasted link |
 | **M4 — Link builder** | `/new` form, copy-to-clipboard, QR code | A non-developer can create a working link |
 | **M5 — Hardening** | security checklist, adversarial payload test suite | §9 fully checked off |
+| **M6 — Public beta** | testnet deployment, `/inspect`, documented SDK | A link shared publicly works for someone who has never seen the app |
 
 ---
 
 ## 9. Security checklist (gate for mainnet)
 
-- [ ] Preview and signed transaction are provably the same object (SEC-1)
-- [ ] Every decode failure path renders an error with no sign affordance (SEC-2)
-- [ ] Network mismatch between intent and wallet is a hard block
-- [ ] `label` / `note` render as text under all inputs, incl. markup and RTL overrides
-- [ ] Oversized payloads are rejected before parsing
-- [ ] Total debit including fee is displayed and correct
-- [ ] No wallet interaction occurs before explicit user action
-- [ ] Adversarial payload suite passes (malformed, hostile, boundary-value)
+- [x] Preview and signed transaction are provably the same object (SEC-1)
+- [x] Every decode failure path renders an error with no sign affordance (SEC-2)
+- [x] Network mismatch between intent and wallet is a hard block
+- [x] `label` / `note` render as text under all inputs, incl. markup and RTL overrides
+- [x] `label` / `note` are never given a position that reads as the page's own voice (SEC-4)
+- [x] Oversized payloads are rejected before parsing
+- [x] Total debit including fee is displayed and correct, including when the recipient is the signer
+- [x] Expiry is enforced continuously and re-checked at send time (SEC-6)
+- [x] Every output in the built transaction is accounted for or the build is refused (SEC-7)
+- [x] A payer-supplied amount is validated by the same code as a link-supplied one
+- [x] Editing a payer-supplied amount discards the transaction built from the old one
+- [x] No wallet interaction occurs before explicit user action
+- [x] Adversarial payload suite passes (malformed, hostile, boundary-value)
+- [ ] End-to-end signing verified on devnet with a funded account
+- [ ] End-to-end signing verified on testnet from a shared link
+- [ ] Independent review of the build/summary path by someone other than the author
+
+The last three are the remaining gate. Everything above them is checked by the test
+suite or by the structure of the code; the three below cannot be checked without
+running the thing against a real wallet, and mainnet stays closed until they are.
 
 ---
 
@@ -277,8 +333,13 @@ Success is adoption by builders, not transaction volume.
 1. **Should `/a` support a `?` query fallback for clients that strip fragments?**
    Some chat clients mangle fragments. Adding a query-param path re-exposes the
    payload to the host. Leaning no; revisit if fragment stripping proves common.
-2. **QR encoding.** Base64url payloads are alphanumeric-unfriendly for QR density.
-   A base32 or binary-mode variant may compress better. Deferred to M4.
+2. ~~**QR encoding.** Base64url payloads are alphanumeric-unfriendly for QR density.~~
+   **Resolved, partly.** Base64url is mixed-case, so QR must use byte mode; the denser
+   alphanumeric mode is uppercase-only and cannot carry the payload. Byte mode is
+   shipped, and a link too long to encode says so rather than failing silently. A
+   base32 payload would fit alphanumeric mode and roughly halve the module count, but
+   it costs ~20% payload length and a version bump, so it waits for evidence that real
+   links are hitting the ceiling.
 3. **Reference links (v2).** Once a hosted variant exists, an allowlist or reputation
    layer for providers becomes necessary. Out of scope for v1, but the format's
    version prefix must leave room for it.

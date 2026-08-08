@@ -22,11 +22,24 @@ import {
   SHANNONS_PER_CKB,
   type ActionIntent,
   type Network,
+  type RequestIntent,
 } from "./intent.ts";
 
 /** Allowed keys per action, so unknown keys can be rejected precisely. */
 const FIELD_SPEC: Record<(typeof KNOWN_ACTIONS)[number], readonly string[]> = {
   transfer: ["v", "network", "action", "to", "amount", "label", "note", "expiry"],
+  request: [
+    "v",
+    "network",
+    "action",
+    "to",
+    "min",
+    "max",
+    "suggested",
+    "label",
+    "note",
+    "expiry",
+  ],
 };
 
 /** Bech32 data-part charset. Excludes the visually ambiguous 1, b, i and o. */
@@ -123,25 +136,81 @@ function checkAddress(value: unknown, network: Network): string {
   return value;
 }
 
-function checkAmount(value: unknown): string {
+function checkAmount(value: unknown, field = "amount"): string {
   if (typeof value !== "string") {
     throw new ActionLinkError(
       "INVALID_FIELD",
-      "The amount in this link is not in a valid format.",
+      `The ${field} in this link is not in a valid format.`,
       `expected decimal string, got ${typeof value}`,
     );
   }
   if (!AMOUNT_PATTERN.test(value)) {
     throw new ActionLinkError(
       "INVALID_FIELD",
-      "The amount in this link is not a valid CKB amount.",
-      `amount=${JSON.stringify(value)}`,
+      `The ${field} in this link is not a valid CKB amount.`,
+      `${field}=${JSON.stringify(value)}`,
     );
   }
   if (parseAmountToShannons(value) <= 0n) {
-    throw new ActionLinkError("INVALID_FIELD", "This link asks for an amount of zero.");
+    throw new ActionLinkError("INVALID_FIELD", `This link's ${field} is zero.`);
   }
   return value;
+}
+
+/**
+ * A request's bounds have to describe a range a payer can actually satisfy.
+ * An inverted or unsatisfiable range is rejected at decode time rather than
+ * leaving the payer to discover it by having every figure they type refused.
+ */
+function checkBounds(intent: RequestIntent): void {
+  const min = intent.min !== undefined ? parseAmountToShannons(intent.min) : undefined;
+  const max = intent.max !== undefined ? parseAmountToShannons(intent.max) : undefined;
+
+  if (min !== undefined && max !== undefined && min > max) {
+    throw new ActionLinkError(
+      "INVALID_FIELD",
+      "This link asks for a minimum larger than its maximum, so no amount could satisfy it.",
+      `min=${intent.min}, max=${intent.max}`,
+    );
+  }
+  if (intent.suggested === undefined) return;
+
+  const suggested = parseAmountToShannons(intent.suggested);
+  if ((min !== undefined && suggested < min) || (max !== undefined && suggested > max)) {
+    throw new ActionLinkError(
+      "INVALID_FIELD",
+      "This link suggests an amount outside its own limits.",
+      `suggested=${intent.suggested}, min=${intent.min}, max=${intent.max}`,
+    );
+  }
+}
+
+/**
+ * Validate an amount the payer typed for a `request`.
+ *
+ * This is the one number in the system that does not come from the link, so it
+ * gets the same treatment as one that does: same format rules, same string
+ * arithmetic, and the creator's bounds enforced on top.
+ */
+export function validatePayerAmount(intent: RequestIntent, amount: unknown): string {
+  const checked = checkAmount(amount, "amount");
+  const shannons = parseAmountToShannons(checked);
+
+  if (intent.min !== undefined && shannons < parseAmountToShannons(intent.min)) {
+    throw new ActionLinkError(
+      "AMOUNT_OUT_OF_RANGE",
+      `This link asks for at least ${intent.min} CKB.`,
+      `amount=${checked}, min=${intent.min}`,
+    );
+  }
+  if (intent.max !== undefined && shannons > parseAmountToShannons(intent.max)) {
+    throw new ActionLinkError(
+      "AMOUNT_OUT_OF_RANGE",
+      `This link accepts at most ${intent.max} CKB.`,
+      `amount=${checked}, max=${intent.max}`,
+    );
+  }
+  return checked;
 }
 
 function checkExpiry(value: unknown): number {
@@ -236,6 +305,20 @@ export function validateIntent(value: unknown): ActionIntent {
         to: checkAddress(value.to, network),
         amount: checkAmount(value.amount),
       };
+    case "request": {
+      const request: ActionIntent = {
+        ...common,
+        action: "request",
+        to: checkAddress(value.to, network),
+        ...(value.min !== undefined ? { min: checkAmount(value.min, "minimum") } : {}),
+        ...(value.max !== undefined ? { max: checkAmount(value.max, "maximum") } : {}),
+        ...(value.suggested !== undefined
+          ? { suggested: checkAmount(value.suggested, "suggested amount") }
+          : {}),
+      };
+      checkBounds(request);
+      return request;
+    }
     default:
       // Unreachable while KNOWN_ACTIONS and this switch agree; kept so that
       // adding an action without a branch fails loudly instead of silently.
@@ -249,6 +332,15 @@ export function validateIntent(value: unknown): ActionIntent {
 /** True when the intent carries an expiry that has already passed. */
 export function isExpired(intent: ActionIntent, nowSeconds: number): boolean {
   return intent.expiry !== undefined && nowSeconds > intent.expiry;
+}
+
+/**
+ * Seconds left before the link expires, or null when it never does.
+ * Clamped at zero so a caller counting down never renders a negative figure.
+ */
+export function secondsUntilExpiry(intent: ActionIntent, nowSeconds: number): number | null {
+  if (intent.expiry === undefined) return null;
+  return Math.max(0, intent.expiry - nowSeconds);
 }
 
 /** Throws EXPIRED if the link is past its expiry. */
