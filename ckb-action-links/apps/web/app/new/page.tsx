@@ -2,7 +2,10 @@
 
 import {
   ActionLinkError,
+  LIMITS,
   buildActionUrl,
+  formatShannonsToCkb,
+  parseAmountToShannons,
   type ActionIntent,
   type ActionType,
   type Network,
@@ -39,6 +42,22 @@ const ACTIONS: { id: ActionType; label: string; hint: string }[] = [
     label: "Payer chooses",
     hint: "They type the amount. Useful for tips and donations; you can set limits.",
   },
+  {
+    id: "split",
+    label: "Several people",
+    hint: `Pay up to ${LIMITS.maxPayments} recipients in one transaction. Everyone is paid, or nobody is.`,
+  },
+];
+
+/** One row of the split editor. Kept as strings — validation is the SDK's job. */
+interface Leg {
+  to: string;
+  amount: string;
+}
+
+const EMPTY_LEGS: Leg[] = [
+  { to: "", amount: "" },
+  { to: "", amount: "" },
 ];
 
 export default function NewLinkPage() {
@@ -51,12 +70,38 @@ export default function NewLinkPage() {
   const [suggested, setSuggested] = useState("");
   const [label, setLabel] = useState("");
   const [note, setNote] = useState("");
+  const [legs, setLegs] = useState<Leg[]>(EMPTY_LEGS);
   const [expiryId, setExpiryId] = useState<ExpiryId>("never");
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
 
   // The origin is only knowable in the browser, and the page is prerendered.
   const [origin, setOrigin] = useState<string | null>(null);
   useEffect(() => setOrigin(window.location.origin), []);
+
+  /*
+   * Whether the browser has a share sheet, read after mount rather than during
+   * render.
+   *
+   * This used to be `typeof navigator !== "undefined" && "share" in navigator`
+   * inline in the markup. The page is prerendered, so that is false on the
+   * server and true in the browser — a hydration mismatch on every render of
+   * this page, in a tree that also holds the generated link.
+   */
+  const [canShare, setCanShare] = useState(false);
+  useEffect(() => setCanShare(typeof navigator !== "undefined" && "share" in navigator), []);
+
+  const editLeg = (index: number, patch: Partial<Leg>) =>
+    setLegs((current) => current.map((leg, i) => (i === index ? { ...leg, ...patch } : leg)));
+
+  const addLeg = () =>
+    setLegs((current) =>
+      current.length < LIMITS.maxPayments ? [...current, { to: "", amount: "" }] : current,
+    );
+
+  const removeLeg = (index: number) =>
+    setLegs((current) =>
+      current.length > LIMITS.minPayments ? current.filter((_, i) => i !== index) : current,
+    );
 
   const chooseExpiry = (id: ExpiryId) => {
     const preset = EXPIRY_PRESETS.find((p) => p.id === id)!;
@@ -67,6 +112,23 @@ export default function NewLinkPage() {
   };
 
   const payerPriced = action === "request";
+  const isSplit = action === "split";
+
+  /** Running total of the split, so the creator sees what they are asking for. */
+  const legsTotal = useMemo(() => {
+    if (!isSplit) return null;
+    try {
+      const sum = legs.reduce(
+        (total, leg) => total + (leg.amount.trim() ? parseAmountToShannons(leg.amount.trim()) : 0n),
+        0n,
+      );
+      return sum > 0n ? formatShannonsToCkb(sum) : null;
+    } catch {
+      // A half-typed amount is not an error worth reporting here — the link
+      // itself will say so, in the SDK's words rather than in ours.
+      return null;
+    }
+  }, [isSplit, legs]);
 
   /**
    * The link is derived from the form on every keystroke rather than built on a
@@ -81,14 +143,18 @@ export default function NewLinkPage() {
       v: 1,
       network,
       action,
-      to: to.trim(),
-      ...(payerPriced
-        ? {
-            ...(min.trim() ? { min: min.trim() } : {}),
-            ...(max.trim() ? { max: max.trim() } : {}),
-            ...(suggested.trim() ? { suggested: suggested.trim() } : {}),
-          }
-        : { amount: amount.trim() }),
+      ...(isSplit
+        ? { payments: legs.map((leg) => ({ to: leg.to.trim(), amount: leg.amount.trim() })) }
+        : {
+            to: to.trim(),
+            ...(payerPriced
+              ? {
+                  ...(min.trim() ? { min: min.trim() } : {}),
+                  ...(max.trim() ? { max: max.trim() } : {}),
+                  ...(suggested.trim() ? { suggested: suggested.trim() } : {}),
+                }
+              : { amount: amount.trim() }),
+          }),
       ...(label.trim() ? { label: label.trim() } : {}),
       ...(note.trim() ? { note: note.trim() } : {}),
       ...(expiresAt !== null ? { expiry: expiresAt } : {}),
@@ -101,11 +167,28 @@ export default function NewLinkPage() {
         error: e instanceof ActionLinkError ? e.userMessage : "Could not create this link.",
       };
     }
-  }, [origin, network, action, to, amount, min, max, suggested, label, note, expiresAt, payerPriced]);
+  }, [
+    origin,
+    network,
+    action,
+    to,
+    amount,
+    min,
+    max,
+    suggested,
+    label,
+    note,
+    expiresAt,
+    payerPriced,
+    isSplit,
+    legs,
+  ]);
 
   // Only complain once the required fields have something in them. Telling
   // someone their address is invalid before they have typed one is noise.
-  const required = to.trim().length > 0 && (payerPriced || amount.trim().length > 0);
+  const required = isSplit
+    ? legs.every((leg) => leg.to.trim().length > 0 && leg.amount.trim().length > 0)
+    : to.trim().length > 0 && (payerPriced || amount.trim().length > 0);
   const link = result && "url" in result ? result.url : null;
   const error = required && result && "error" in result ? result.error : null;
 
@@ -170,24 +253,89 @@ export default function NewLinkPage() {
         </Notice>
       ) : null}
 
-      <div className="field">
-        <label htmlFor="to">Recipient address</label>
-        <input
-          id="to"
-          className="mono"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          placeholder={network === "ckt" ? "ckt1…" : "ckb1…"}
-          spellCheck={false}
-          autoComplete="off"
-        />
-        <p className="field-hint">
-          Must be {network === "ckt" ? "a testnet" : "a mainnet"} address — the network and the
-          address prefix have to agree.
-        </p>
-      </div>
+      {isSplit ? (
+        <div className="field">
+          <span className="field-caption" id="legs-label">
+            Recipients
+          </span>
+          <ol className="legs" aria-labelledby="legs-label">
+            {legs.map((leg, i) => (
+              <li key={i} className="leg">
+                <div className="leg-head">
+                  <span className="leg-index">{i + 1}</span>
+                  <button
+                    type="button"
+                    className="btn btn-mini"
+                    onClick={() => removeLeg(i)}
+                    disabled={legs.length <= LIMITS.minPayments}
+                  >
+                    Remove
+                  </button>
+                </div>
+                <input
+                  className="mono"
+                  value={leg.to}
+                  onChange={(e) => editLeg(i, { to: e.target.value })}
+                  placeholder={network === "ckt" ? "ckt1…" : "ckb1…"}
+                  spellCheck={false}
+                  autoComplete="off"
+                  aria-label={`Recipient ${i + 1} address`}
+                />
+                <input
+                  className="mono leg-amount"
+                  value={leg.amount}
+                  onChange={(e) => editLeg(i, { amount: e.target.value })}
+                  placeholder="100"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  aria-label={`Amount for recipient ${i + 1}, in CKB`}
+                />
+              </li>
+            ))}
+          </ol>
 
-      {payerPriced ? (
+          <div className="actions" style={{ marginTop: "0.75rem" }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={addLeg}
+              disabled={legs.length >= LIMITS.maxPayments}
+            >
+              Add recipient
+            </button>
+            {legsTotal ? (
+              <span className="leg-total">
+                Total <span className="mono">{legsTotal} CKB</span>
+              </span>
+            ) : null}
+          </div>
+
+          <p className="field-hint">
+            Up to {LIMITS.maxPayments} recipients, each at least 61 CKB. Everyone is paid in a
+            single transaction, so it either all happens or none of it does. The cap is there
+            because whoever signs has to check every address on this list.
+          </p>
+        </div>
+      ) : (
+        <div className="field">
+          <label htmlFor="to">Recipient address</label>
+          <input
+            id="to"
+            className="mono"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            placeholder={network === "ckt" ? "ckt1…" : "ckb1…"}
+            spellCheck={false}
+            autoComplete="off"
+          />
+          <p className="field-hint">
+            Must be {network === "ckt" ? "a testnet" : "a mainnet"} address — the network and the
+            address prefix have to agree.
+          </p>
+        </div>
+      )}
+
+      {isSplit ? null : payerPriced ? (
         <>
           <div className="field-row">
             <div className="field">
@@ -323,7 +471,7 @@ export default function NewLinkPage() {
               <a className="btn" href={link} target="_blank" rel="noreferrer">
                 Open it yourself
               </a>
-              {typeof navigator !== "undefined" && "share" in navigator ? (
+              {canShare ? (
                 <button type="button" className="btn" onClick={share}>
                   Share
                 </button>
@@ -339,7 +487,9 @@ export default function NewLinkPage() {
           <p className="small muted" style={{ marginBottom: 0 }}>
             {required
               ? "Fix the details above and the link will appear here."
-              : "Fill in a recipient and an amount. The link appears here as you type."}
+              : isSplit
+                ? "Fill in an address and an amount for every recipient. The link appears here as you type."
+                : "Fill in a recipient and an amount. The link appears here as you type."}
           </p>
         </div>
       )}

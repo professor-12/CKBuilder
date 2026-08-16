@@ -133,7 +133,8 @@ adding the next one is a single new file plus a registry entry.
 |---|---|---|
 | `transfer` | **v1** | Send a fixed amount of CKB to an address. Covers invoices and fixed prices. |
 | `request` | **v1.1** | Ask for a payment without fixing the amount. The payer names the figure, within optional `min`/`max` bounds. Covers tips, donations, pay-what-you-like. |
-| `transfer-udt` | v1.2 | Send an xUDT token amount. |
+| `split` | **v1.2** | Pay several recipients in one transaction, each a fixed amount. Covers bill-splitting, contributor payouts, shared refunds. |
+| `transfer-udt` | v1.3 | Send an xUDT token amount. |
 | `mint-dob` | v2 | Mint a Spore DOB into a Cluster. |
 | `attest` | v2 | Create an attestation Cell (depends on Idea #7). |
 
@@ -226,6 +227,19 @@ open past its expiry keeps a live sign button because nothing looks at the clock
 The countdown runs for as long as the page is open, a lapse discards the built
 transaction, and the check is repeated at the moment of sending.
 
+### SEC-8 — The built transaction must carry the amount that was asked for
+
+CCC raises an output below the cell minimum up to that minimum rather than refusing
+it. That is a sensible default for a wallet and a dangerous one here: ask for 1 CKB
+and the built transaction carries 61. Because SEC-1 requires the preview to be read
+off the transaction rather than off the intent, the summary would then report 61 CKB
+— accurately — for a payment nobody agreed to.
+
+The floor is therefore checked against the amount that was *requested*, and each
+built output is compared against its requested figure afterwards. Any silent
+adjustment, in either direction, is a refusal rather than something the preview
+inherits.
+
 ### SEC-7 — Every output is accounted for
 
 The summary identifies the output the action was built to create, and requires every
@@ -303,6 +317,9 @@ Mainnet is gated on completing the security checklist in §9.
 - [x] Editing a payer-supplied amount discards the transaction built from the old one
 - [x] No wallet interaction occurs before explicit user action
 - [x] Adversarial payload suite passes (malformed, hostile, boundary-value)
+- [x] An amount no cell could hold is refused when the link is created, not only when it is built
+- [x] Every leg of a multi-recipient action gets the same scrutiny as a single transfer
+- [x] A built output whose capacity differs from the amount requested is refused
 - [ ] End-to-end signing verified on devnet with a funded account
 - [ ] End-to-end signing verified on testnet from a shared link
 - [ ] Independent review of the build/summary path by someone other than the author

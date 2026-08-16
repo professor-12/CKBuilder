@@ -7,6 +7,7 @@ import {
   decodePayload,
   describeIntent,
   formatRemaining,
+  isPayerPriced,
   networkName,
   secondsUntilExpiry,
   validatePayerAmount,
@@ -17,7 +18,14 @@ import { ccc } from "@ckb-ccc/connector-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { Address, Chip, Notice, Spinner, useNowSeconds } from "../components/ui";
+import {
+  Address,
+  Chip,
+  Notice,
+  RecipientList,
+  Spinner,
+  useNowSeconds,
+} from "../components/ui";
 
 /** Turn any thrown value into something safe to show a person. */
 function presentableError(error: unknown): string {
@@ -128,7 +136,7 @@ export default function ActionPage() {
   // Building is read-only — it collects cells and estimates a fee. It never
   // prompts for a signature (SEC-5).
   useEffect(() => {
-    if (!intent || !signer || intent.action !== "transfer" || expired) return;
+    if (!intent || !signer || isPayerPriced(intent.action) || expired) return;
     void build();
   }, [intent, signer, expired, build]);
 
@@ -222,7 +230,10 @@ export default function ActionPage() {
         </Notice>
 
         <div className="card">
-          <Address value={txHash} label="Transaction hash" copyable />
+          {/* No prefix emphasis: on a hash the first four characters are just
+              "0x" and two digits, and marking them implies a meaning they
+              do not have. */}
+          <Address value={txHash} label="Transaction hash" copyable prefix={false} />
         </div>
 
         <div className="actions">
@@ -321,7 +332,11 @@ export default function ActionPage() {
           <div className="card card-quiet">
             {claim.amount !== null ? (
               <div className="hero">
-                <div className="hero-caption">Amount requested</div>
+                <div className="hero-caption">
+                  {claim.recipients.length > 1
+                    ? `Total across ${claim.recipients.length} recipients`
+                    : "Amount requested"}
+                </div>
                 <div className="hero-amount">
                   {claim.amount}
                   <span className="hero-unit">CKB</span>
@@ -333,7 +348,19 @@ export default function ActionPage() {
                 <div className="hero-note">You choose{boundsPhrase(claim.bounds)}</div>
               </div>
             )}
-            <Address value={claim.recipient} label="Recipient" copyable />
+            <RecipientList
+              copyable
+              recipients={claim.recipients.map((recipient) => ({
+                address: recipient.address,
+                amount: recipient.amount,
+                // Between the floor every lock clears and the one a standard
+                // address needs. Constructible in principle, so the schema let
+                // it through; likely to be refused once the lock is resolved.
+                note: recipient.belowTypicalMinimum
+                  ? `${recipient.amount} CKB is below the 61 CKB a standard address needs to pay for its own storage. This is likely to be refused when the transaction is built.`
+                  : undefined,
+              }))}
+            />
           </div>
 
           {payerPriced ? (
@@ -433,14 +460,24 @@ export default function ActionPage() {
                 </div>
 
                 <div style={{ marginBottom: "1.15rem" }}>
-                  <Address
-                    value={summary.payment.address}
-                    label="To"
-                    trailing={<span className="mono">{summary.payment.amount} CKB</span>}
+                  <RecipientList
+                    recipients={summary.payments.map((payment) => ({
+                      address: payment.address,
+                      amount: payment.amount,
+                      note: payment.toSelf
+                        ? "Your own wallet controls this address, so this capacity comes back to you."
+                        : undefined,
+                    }))}
                   />
                 </div>
 
                 <dl className="details">
+                  {summary.payments.length > 1 ? (
+                    <>
+                      <dt>Sent to {summary.payments.length} recipients</dt>
+                      <dd className="mono">{summary.paid} CKB</dd>
+                    </>
+                  ) : null}
                   <dt>Network fee</dt>
                   <dd className="mono">{summary.fee} CKB</dd>
                   <dt className="details-total">Total leaving your wallet</dt>
@@ -451,14 +488,16 @@ export default function ActionPage() {
               {/*
                 A payment to an address the signer already controls used to
                 vanish from the summary entirely, because outputs were filtered
-                by "is this lock mine". Now it is shown and explained.
+                by "is this lock mine". Now it is shown and explained — and with
+                a split, only the legs that come back are called out.
               */}
-              {summary.payment.toSelf ? (
+              {summary.payments.some((payment) => payment.toSelf) ? (
                 <div style={{ marginTop: "1.25rem" }}>
                   <Notice tone="warn">
                     <p>
-                      This link pays an address your own wallet controls. The capacity comes
-                      straight back to you, so only the network fee is actually spent.
+                      {summary.payments.every((payment) => payment.toSelf)
+                        ? "This link pays an address your own wallet controls. The capacity comes straight back to you, so only the network fee is actually spent."
+                        : "Part of this link pays an address your own wallet controls. That capacity comes straight back to you, which is why the total below is smaller than the amounts above add up to."}
                     </p>
                   </Notice>
                 </div>

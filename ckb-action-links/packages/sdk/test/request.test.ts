@@ -106,8 +106,18 @@ describe("the payer's amount is validated like any other", () => {
     assert.equal(validatePayerAmount(request({ min: "61", max: "1000" }), "100"), "100");
   });
 
-  it("accepts any positive figure when the link sets no bounds", () => {
-    assert.equal(validatePayerAmount(request(), "0.00000001"), "0.00000001");
+  it("accepts any constructible figure when the link sets no bounds", () => {
+    assert.equal(validatePayerAmount(request(), "61"), "61");
+  });
+
+  it("applies the cell floor even when the link sets no bounds of its own", () => {
+    // A figure no cell could hold is refused whether or not the creator
+    // thought to exclude it, and refused while the payer is still typing
+    // rather than after they press a button that looked available.
+    rejectsWith("BELOW_MIN_CAPACITY", () =>
+      validatePayerAmount(request(), "0.00000001"),
+    );
+    rejectsWith("BELOW_MIN_CAPACITY", () => validatePayerAmount(request(), "40.99999999"));
   });
 
   it("rejects a figure below the minimum", () => {
@@ -121,9 +131,11 @@ describe("the payer's amount is validated like any other", () => {
   });
 
   it("holds the bounds exactly, without float slack", () => {
-    const bounded = request({ min: "0.1", max: "0.3" });
-    assert.equal(validatePayerAmount(bounded, "0.3"), "0.3");
-    rejectsWith("AMOUNT_OUT_OF_RANGE", () => validatePayerAmount(bounded, "0.30000001"));
+    // A single shannon over the ceiling is over the ceiling. The figures sit
+    // above the cell floor so that this tests the bound and nothing else.
+    const bounded = request({ min: "61.1", max: "61.3" });
+    assert.equal(validatePayerAmount(bounded, "61.3"), "61.3");
+    rejectsWith("AMOUNT_OUT_OF_RANGE", () => validatePayerAmount(bounded, "61.30000001"));
   });
 
   it("applies the same format rules the link's own amounts get", () => {

@@ -1023,8 +1023,101 @@ input[aria-invalid="true"]:focus {
   margin: 0 0 1.4rem;
 }
 
-/* ── Screen-reader announcements ───────────────────────────────────────── */
+/* ── Split editor ──────────────────────────────────────────────────────── */
 
+.legs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.leg {
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-sm);
+  background: var(--paper-1);
+  padding: 0.85rem;
+}
+
+.leg + .leg {
+  margin-top: 0.6rem;
+}
+
+.leg-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.leg-index {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--ink-1);
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.leg-amount {
+  margin-top: 0.5rem;
+}
+
+.leg-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--ink-2);
+  margin-left: auto;
+  align-self: center;
+}
+
+.leg-total .mono {
+  color: var(--ink-0);
+  font-weight: 500;
+}
+
+/* ── Recipients ────────────────────────────────────────────────────────── */
+
+.recipients {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: recipient;
+}
+
+.recipients li + li {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line-1);
+}
+
+.recipients-single li + li {
+  border-top: none;
+}
+
+.recipient-note {
+  margin-top: 0.5rem;
+  font-size: 0.795rem;
+  line-height: 1.5;
+  color: var(--ink-1);
+  padding-left: 0.65rem;
+  border-left: 2px solid var(--line-3);
+}
+
+/* ── Screen-reader-only text ───────────────────────────────────────────── */
+
+/*
+ * Clipped rather than hidden. `display: none` and `visibility: hidden` remove
+ * the node from the accessibility tree along with the layout, which is the
+ * opposite of what is wanted for a string that exists only to be announced.
+ */
+.sr-only,
 .sr-live {
   position: absolute;
   width: 1px;

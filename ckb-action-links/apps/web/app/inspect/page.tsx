@@ -11,7 +11,14 @@ import {
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { Address, Chip, Notice, useNowSeconds } from "../components/ui";
+import { Chip, Notice, RecipientList, useNowSeconds } from "../components/ui";
+
+/** Human wording for an action name, so a machine token never faces a reader. */
+const ACTION_LABEL: Record<string, string> = {
+  transfer: "Fixed amount",
+  request: "Payer chooses",
+  split: "Several recipients",
+};
 
 type InspectResult =
   | { ok: true; intent: ActionIntent }
@@ -97,7 +104,7 @@ export default function InspectPage() {
               {claim.networkLabel}
               {claim.isMainnet ? " · real funds" : null}
             </Chip>
-            <Chip>{claim.action}</Chip>
+            <Chip>{ACTION_LABEL[claim.action] ?? claim.action}</Chip>
             {claim.secondsRemaining !== null ? (
               <Chip tone={claim.expired ? "danger" : undefined}>
                 {claim.expired
@@ -114,11 +121,26 @@ export default function InspectPage() {
               <div className="hero-note">{claim.headline}</div>
             </div>
 
-            <Address value={claim.recipient} label="Recipient" copyable />
+            <RecipientList
+              copyable
+              recipients={claim.recipients.map((recipient) => ({
+                address: recipient.address,
+                amount: recipient.amount,
+                note: recipient.belowTypicalMinimum
+                  ? `${recipient.amount} CKB is below the 61 CKB a standard address needs to pay for its own storage. This is likely to be refused when the transaction is built.`
+                  : undefined,
+              }))}
+            />
 
             <dl className="details" style={{ marginTop: "1.15rem" }}>
               <dt>Network</dt>
               <dd>{claim.networkLabel}</dd>
+              {claim.recipients.length > 1 ? (
+                <>
+                  <dt>Recipients</dt>
+                  <dd>{claim.recipients.length}</dd>
+                </>
+              ) : null}
               <dt>Expires</dt>
               <dd>
                 {claim.expiresAt === null

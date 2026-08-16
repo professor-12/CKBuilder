@@ -23,6 +23,8 @@ const PRIVATE_KEY = "0x000000000000000000000000000000000000000000000000000000000
 
 const TESTNET_ADDRESS =
   "ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqt4z78ng4yutl5u6xsv27ht6q08mhujf8s2r0n40";
+const SECOND_ADDRESS =
+  "ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqt4z78ng4yutl5u6xsv27ht6q08mhujgqg84wylt";
 const MAINNET_ADDRESS =
   "ckb1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqt4z78ng4yutl5u6xsv27ht6q08mhujf8sy3yulh";
 
@@ -71,6 +73,32 @@ describe("buildAction refuses before touching the chain", () => {
     // storage. Caught here rather than as a raw RPC rejection after signing.
     await rejectsWith("BELOW_MIN_CAPACITY", () =>
       buildAction(transfer({ amount: "1" }), testnetSigner()),
+    );
+  });
+
+  it("blocks an amount between the absolute floor and this lock's real one", async () => {
+    // 45 CKB clears the 41 that no cell can go under, so the schema lets it
+    // through — but this recipient's lock needs 61, and only the built
+    // transaction knows that.
+    await rejectsWith("BELOW_MIN_CAPACITY", () =>
+      buildAction(transfer({ amount: "45" }), testnetSigner()),
+    );
+  });
+
+  it("blocks a split whose smallest leg cannot pay for its own storage", async () => {
+    await rejectsWith("BELOW_MIN_CAPACITY", () =>
+      buildAction(
+        {
+          v: 1,
+          network: "ckt",
+          action: "split",
+          payments: [
+            { to: TESTNET_ADDRESS, amount: "100" },
+            { to: SECOND_ADDRESS, amount: "45" },
+          ],
+        },
+        testnetSigner(),
+      ),
     );
   });
 

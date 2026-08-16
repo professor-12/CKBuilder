@@ -15,14 +15,17 @@
 
 import { ActionLinkError } from "./errors.ts";
 import {
+  ABSOLUTE_MIN_CELL_CKB,
   KNOWN_ACTIONS,
   LIMITS,
   NETWORKS,
   PROTOCOL_VERSION,
   SHANNONS_PER_CKB,
+  TYPICAL_MIN_CELL_CKB,
   type ActionIntent,
   type Network,
   type RequestIntent,
+  type SplitPayment,
 } from "./intent.ts";
 
 /** Allowed keys per action, so unknown keys can be rejected precisely. */
@@ -40,7 +43,17 @@ const FIELD_SPEC: Record<(typeof KNOWN_ACTIONS)[number], readonly string[]> = {
     "note",
     "expiry",
   ],
+  split: ["v", "network", "action", "payments", "label", "note", "expiry"],
 };
+
+/** Allowed keys inside one leg of a split. Same rule, one level down. */
+const PAYMENT_FIELDS: readonly string[] = ["to", "amount"];
+
+/** Absolute cell floor, in shannons. */
+const ABSOLUTE_MIN_SHANNONS = ABSOLUTE_MIN_CELL_CKB * SHANNONS_PER_CKB;
+
+/** Standard-lock cell floor, in shannons. */
+const TYPICAL_MIN_SHANNONS = TYPICAL_MIN_CELL_CKB * SHANNONS_PER_CKB;
 
 /** Bech32 data-part charset. Excludes the visually ambiguous 1, b, i and o. */
 const BECH32_CHARS = /^[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+$/;
@@ -158,6 +171,41 @@ function checkAmount(value: unknown, field = "amount"): string {
 }
 
 /**
+ * Refuse an amount no cell could ever hold.
+ *
+ * A cell pays for its own storage, so a transfer of 5 CKB is not merely
+ * unusual — it cannot be constructed under any lock. That used to surface only
+ * at build time, from `occupiedSize`, which meant a link asking for it could be
+ * created, shared and QR-encoded, and would then be refused for every single
+ * person who opened it.
+ *
+ * Only the absolute floor is enforced here. The figure that matters for a real
+ * address is higher, but it depends on the recipient's lock args, and this
+ * layer has no client to resolve those with — so anything between the two is
+ * `warnsBelowTypicalMinimum`'s business, not a refusal.
+ */
+function checkMinimumCapacity(amount: string, field = "amount"): void {
+  if (parseAmountToShannons(amount) < ABSOLUTE_MIN_SHANNONS) {
+    throw new ActionLinkError(
+      "BELOW_MIN_CAPACITY",
+      `This link's ${field} is ${amount} CKB, but a cell must hold at least ` +
+        `${ABSOLUTE_MIN_CELL_CKB} CKB to pay for its own storage.`,
+      `${amount} < ${ABSOLUTE_MIN_CELL_CKB}`,
+    );
+  }
+}
+
+/**
+ * True when an amount clears the absolute floor but not the one a standard
+ * address needs. Not a refusal — the recipient's lock might genuinely be
+ * smaller — but worth saying out loud before a link is shared.
+ */
+export function warnsBelowTypicalMinimum(amount: string): boolean {
+  const shannons = parseAmountToShannons(amount);
+  return shannons >= ABSOLUTE_MIN_SHANNONS && shannons < TYPICAL_MIN_SHANNONS;
+}
+
+/**
  * A request's bounds have to describe a range a payer can actually satisfy.
  * An inverted or unsatisfiable range is rejected at decode time rather than
  * leaving the payer to discover it by having every figure they type refused.
@@ -173,6 +221,18 @@ function checkBounds(intent: RequestIntent): void {
       `min=${intent.min}, max=${intent.max}`,
     );
   }
+
+  // The same satisfiability question the check above asks, one level deeper. A
+  // ceiling under the cell floor leaves a range that is well-formed and still
+  // contains no figure anyone could sign.
+  if (max !== undefined && max < ABSOLUTE_MIN_SHANNONS) {
+    throw new ActionLinkError(
+      "INVALID_FIELD",
+      `This link accepts at most ${intent.max} CKB, but a cell must hold at least ` +
+        `${ABSOLUTE_MIN_CELL_CKB} CKB, so no amount could satisfy it.`,
+      `max=${intent.max} < ${ABSOLUTE_MIN_CELL_CKB}`,
+    );
+  }
   if (intent.suggested === undefined) return;
 
   const suggested = parseAmountToShannons(intent.suggested);
@@ -186,6 +246,81 @@ function checkBounds(intent: RequestIntent): void {
 }
 
 /**
+ * Validate the recipient list of a split.
+ *
+ * Every leg gets exactly the treatment a single `transfer` gets — same address
+ * check, same amount check, same cell floor — because a split is not a weaker
+ * transfer, it is several of them.
+ */
+function checkPayments(value: unknown, network: Network): SplitPayment[] {
+  if (!Array.isArray(value)) {
+    throw new ActionLinkError(
+      "INVALID_FIELD",
+      "This link does not contain a valid list of recipients.",
+      `expected array, got ${typeof value}`,
+    );
+  }
+  if (value.length < LIMITS.minPayments) {
+    throw new ActionLinkError(
+      "INVALID_FIELD",
+      `A split needs at least ${LIMITS.minPayments} recipients.`,
+      `${value.length} < ${LIMITS.minPayments}`,
+    );
+  }
+  if (value.length > LIMITS.maxPayments) {
+    throw new ActionLinkError(
+      "INVALID_FIELD",
+      `This link pays ${value.length} recipients, which is more than the ` +
+        `${LIMITS.maxPayments} anyone can reasonably check before signing.`,
+      `${value.length} > ${LIMITS.maxPayments}`,
+    );
+  }
+
+  const seen = new Set<string>();
+  return value.map((entry, index) => {
+    if (!isPlainObject(entry)) {
+      throw new ActionLinkError(
+        "INVALID_FIELD",
+        `Recipient ${index + 1} in this link is not valid.`,
+        `expected object, got ${typeof entry}`,
+      );
+    }
+    for (const key of Object.keys(entry)) {
+      if (!PAYMENT_FIELDS.includes(key)) {
+        throw new ActionLinkError(
+          "UNKNOWN_FIELD",
+          "This link contains information this app does not understand.",
+          `unexpected field "${key}" on recipient ${index + 1}`,
+        );
+      }
+    }
+
+    const to = checkAddress(entry.to, network);
+    const amount = checkAmount(entry.amount, `amount for recipient ${index + 1}`);
+    checkMinimumCapacity(amount, `amount for recipient ${index + 1}`);
+
+    // Two legs paying the same address are legal on chain, but in a link they
+    // are either a mistake or an attempt to make a list harder to read to the
+    // end. Either way, one address should appear once.
+    if (seen.has(to)) {
+      throw new ActionLinkError(
+        "INVALID_FIELD",
+        "This link pays the same address more than once.",
+        `duplicate recipient at position ${index + 1}`,
+      );
+    }
+    seen.add(to);
+
+    return { to, amount };
+  });
+}
+
+/** Total of a split, in shannons. */
+export function totalOfPayments(payments: readonly SplitPayment[]): bigint {
+  return payments.reduce((sum, p) => sum + parseAmountToShannons(p.amount), 0n);
+}
+
+/**
  * Validate an amount the payer typed for a `request`.
  *
  * This is the one number in the system that does not come from the link, so it
@@ -195,6 +330,17 @@ function checkBounds(intent: RequestIntent): void {
 export function validatePayerAmount(intent: RequestIntent, amount: unknown): string {
   const checked = checkAmount(amount, "amount");
   const shannons = parseAmountToShannons(checked);
+
+  // Said here rather than at build time, so the payer learns it while typing
+  // instead of after pressing a button that looked available.
+  if (shannons < ABSOLUTE_MIN_SHANNONS) {
+    throw new ActionLinkError(
+      "BELOW_MIN_CAPACITY",
+      `A cell must hold at least ${ABSOLUTE_MIN_CELL_CKB} CKB to pay for its own storage, ` +
+        `so ${checked} CKB cannot be sent.`,
+      `amount=${checked} < ${ABSOLUTE_MIN_CELL_CKB}`,
+    );
+  }
 
   if (intent.min !== undefined && shannons < parseAmountToShannons(intent.min)) {
     throw new ActionLinkError(
@@ -298,12 +444,21 @@ export function validateIntent(value: unknown): ActionIntent {
   };
 
   switch (action) {
-    case "transfer":
+    case "transfer": {
+      const amount = checkAmount(value.amount);
+      checkMinimumCapacity(amount);
       return {
         ...common,
         action: "transfer",
         to: checkAddress(value.to, network),
-        amount: checkAmount(value.amount),
+        amount,
+      };
+    }
+    case "split":
+      return {
+        ...common,
+        action: "split",
+        payments: checkPayments(value.payments, network),
       };
     case "request": {
       const request: ActionIntent = {

@@ -44,7 +44,10 @@ describe("describeIntent", () => {
     assert.equal(claim.headline, "Send 100 CKB");
     assert.equal(claim.amount, "100");
     assert.equal(claim.bounds, null);
-    assert.equal(claim.recipient, TESTNET_ADDRESS);
+    assert.deepEqual(
+      claim.recipients.map((r) => r.address),
+      [TESTNET_ADDRESS],
+    );
   });
 
   it("phrases every shape of request bound", () => {

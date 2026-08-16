@@ -12,20 +12,32 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
  * screen and legible enough that comparing it is realistic rather than
  * theoretical.
  *
- * The grouping is visual only. Assistive technology gets the address as one
- * unbroken string, because a screen reader announcing it in four-character
- * chunks is harder to check against another address, not easier.
+ * The grouping is visual only — a screen reader announcing an address as two
+ * dozen four-character chunks is harder to check against another address, not
+ * easier. Last week that was done by hiding the groups and putting the whole
+ * string in `aria-label` on the wrapping div, which does not work: a plain div
+ * has the `generic` role, and ARIA does not allow a name on it, so assistive
+ * technology is free to ignore it — leaving the address announced as nothing at
+ * all. The full string is now a visually-hidden text node instead, which is
+ * read because it is content rather than because a name was asserted.
  */
 export function Address({
   value,
   label,
   trailing,
   copyable = false,
+  /**
+   * Emphasise the first group. True for addresses, where it is the network
+   * prefix and worth leading the eye to; false for hashes, where the first
+   * four characters mean nothing in particular.
+   */
+  prefix = true,
 }: {
   value: string;
   label?: string;
   trailing?: ReactNode;
   copyable?: boolean;
+  prefix?: boolean;
 }) {
   const groups = value.match(/.{1,4}/g) ?? [value];
   return (
@@ -39,15 +51,52 @@ export function Address({
           </span>
         </div>
       ) : null}
-      {/* The full value stays selectable as one string for copy/paste. */}
-      <div className="addr" title={value} aria-label={value}>
+      <div className="addr" title={value}>
+        <span className="sr-only">{value}</span>
         {groups.map((group, i) => (
-          <span key={i} className={i === 0 ? "addr-prefix" : undefined} aria-hidden>
+          <span key={i} className={prefix && i === 0 ? "addr-prefix" : undefined} aria-hidden>
             {group}
           </span>
         ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * The recipients of an action, one row each.
+ *
+ * A split names several, and every one of them has to be checked by whoever
+ * signs — so they are numbered, shown in full, and given equal weight. Nothing
+ * here collapses or scrolls: a list that hides a row is a list with somewhere
+ * to hide a recipient.
+ */
+export function RecipientList({
+  recipients,
+  copyable = false,
+}: {
+  recipients: { address: string; amount?: string | null; note?: ReactNode }[];
+  copyable?: boolean;
+}) {
+  const many = recipients.length > 1;
+  return (
+    <ol className={many ? "recipients" : "recipients recipients-single"}>
+      {recipients.map((recipient, i) => (
+        <li key={recipient.address}>
+          <Address
+            value={recipient.address}
+            label={many ? `Recipient ${i + 1} of ${recipients.length}` : "Recipient"}
+            copyable={copyable}
+            trailing={
+              recipient.amount ? (
+                <span className="mono">{recipient.amount} CKB</span>
+              ) : undefined
+            }
+          />
+          {recipient.note ? <div className="recipient-note">{recipient.note}</div> : null}
+        </li>
+      ))}
+    </ol>
   );
 }
 

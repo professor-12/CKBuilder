@@ -57,11 +57,19 @@ export interface ActionSummary {
   action: ActionType;
   network: Network;
   /**
-   * The output this action was built to create, read back off the transaction
-   * rather than off the intent. Its address comes from the output's own lock
-   * script and its amount from the output's own capacity.
+   * The outputs this action was built to create, read back off the transaction
+   * rather than off the intent. Each address comes from that output's own lock
+   * script and each amount from its own capacity.
+   *
+   * This was a single `payment` until `split` arrived, and the singular was an
+   * assumption rather than a decision — the accounting rule it enforced ("one
+   * payment, everything else mine") happened to be expressible as one field
+   * only because there had never been an action with two legs.
    */
-  payment: SummaryOutput;
+  payments: SummaryOutput[];
+  /** Sum of `payments`, in decimal CKB. Not the cost — see `totalDebit`. */
+  paid: string;
+  paidShannons: bigint;
   /** Network fee in decimal CKB. */
   fee: string;
   feeShannons: bigint;
@@ -101,10 +109,11 @@ export interface BuildOptions {
 /** A transaction plus the bookkeeping needed to summarise it honestly. */
 interface Plan {
   tx: ccc.Transaction;
-  /** Index of the output this action was built to create. */
-  paymentIndex: number;
-  /** The lock that output was built to pay, cross-checked against the tx. */
-  recipient: ccc.Script;
+  /**
+   * The outputs this action created, by index, with the lock each was built to
+   * pay. summarise() cross-checks both rather than trusting either.
+   */
+  intended: { index: number; recipient: ccc.Script }[];
 }
 
 /** Map a CKB address prefix to our network discriminator. */
@@ -154,34 +163,46 @@ async function summarise(
   intent: ActionIntent,
   signer: ccc.Signer,
 ): Promise<ActionSummary> {
-  const { tx, paymentIndex, recipient } = plan;
+  const { tx, intended } = plan;
   const client = signer.client;
   const ownLocks = (await signer.getAddressObjs()).map((address) => address.script);
   const isOwn = (lock: ccc.Script) => ownLocks.some((own) => own.eq(lock));
 
-  const paymentOutput = tx.outputs[paymentIndex];
-  if (!paymentOutput || !paymentOutput.lock.eq(recipient)) {
-    // Unreachable unless CCC reorders outputs beneath us. If it ever does, the
-    // summary would describe a different cell than the one being paid, which is
-    // precisely the divergence SEC-1 exists to prevent. Refuse instead.
-    throw new ActionLinkError(
-      "UNACCOUNTED_OUTPUT",
-      "This transaction could not be summarised safely, so it will not be offered for signing.",
-      `payment output ${paymentIndex} is not the recipient's cell`,
-    );
-  }
+  // Each intended output must still be the cell it was built as. Unreachable
+  // unless CCC reorders outputs beneath us — but if it ever did, the summary
+  // would describe different cells than the ones being paid, which is exactly
+  // the divergence SEC-1 exists to prevent.
+  const payments: SummaryOutput[] = intended.map(({ index, recipient }) => {
+    const output = tx.outputs[index];
+    if (!output || !output.lock.eq(recipient)) {
+      throw new ActionLinkError(
+        "UNACCOUNTED_OUTPUT",
+        "This transaction could not be summarised safely, so it will not be offered for signing.",
+        `output ${index} is not the recipient's cell`,
+      );
+    }
+    return {
+      address: ccc.Address.fromScript(output.lock, client).toString(),
+      amount: formatShannonsToCkb(output.capacity),
+      amountShannons: output.capacity,
+      toSelf: isOwn(output.lock),
+    };
+  });
+
+  const intendedIndices = new Set(intended.map((entry) => entry.index));
 
   let returnedShannons = 0n;
   for (const [index, output] of tx.outputs.entries()) {
-    const own = isOwn(output.lock);
-    if (own) {
+    // Own outputs come back to the signer whether they are change or a leg of
+    // the split that happens to pay an address they already control.
+    if (isOwn(output.lock)) {
       returnedShannons += output.capacity;
       continue;
     }
-    if (index !== paymentIndex) {
-      // An output paying someone who is neither the signer nor the recipient
-      // named by the link. Nothing in this SDK creates one, and a preview that
-      // did not mention it would be a lie.
+    if (!intendedIndices.has(index)) {
+      // An output paying someone who is neither the signer nor a recipient the
+      // link named. Nothing in this SDK creates one, and a preview that did not
+      // mention it would be a lie.
       throw new ActionLinkError(
         "UNACCOUNTED_OUTPUT",
         "This transaction contains a payment this app cannot explain, so it will not be offered for signing.",
@@ -195,18 +216,14 @@ async function summarise(
   const inputsCapacity = await tx.getInputsCapacity(client);
   const feeShannons = inputsCapacity - tx.getOutputsCapacity();
   const totalDebitShannons = inputsCapacity - returnedShannons;
-
-  const payment: SummaryOutput = {
-    address: ccc.Address.fromScript(paymentOutput.lock, client).toString(),
-    amount: formatShannonsToCkb(paymentOutput.capacity),
-    amountShannons: paymentOutput.capacity,
-    toSelf: isOwn(paymentOutput.lock),
-  };
+  const paidShannons = payments.reduce((sum, p) => sum + p.amountShannons, 0n);
 
   return {
     action: intent.action,
     network: intent.network,
-    payment,
+    payments,
+    paid: formatShannonsToCkb(paidShannons),
+    paidShannons,
     fee: formatShannonsToCkb(feeShannons),
     feeShannons,
     returned: formatShannonsToCkb(returnedShannons),
@@ -224,10 +241,8 @@ async function summarise(
  * Shared by every value-moving action, so `transfer` and `request` cannot drift
  * apart in how they collect inputs, price the fee, or enforce the cell minimum.
  */
-async function planPayment(
-  to: string,
-  capacity: bigint,
-  displayAmount: string,
+async function planPayments(
+  legs: readonly { to: string; amount: string }[],
   signer: ccc.Signer,
   feeRate: bigint,
 ): Promise<Plan> {
@@ -235,40 +250,77 @@ async function planPayment(
 
   // Full checksum validation happens here — validate.ts only applies structural
   // gates because it has no client to resolve against.
-  let recipient: ccc.Address;
-  try {
-    recipient = await ccc.Address.fromString(to, client);
-  } catch (cause) {
-    throw new ActionLinkError(
-      "INVALID_ADDRESS",
-      "The recipient address in this link is not a valid CKB address.",
-      cause instanceof Error ? cause.message : undefined,
-    );
-  }
+  const recipients = await Promise.all(
+    legs.map(async (leg) => {
+      try {
+        return await ccc.Address.fromString(leg.to, client);
+      } catch (cause) {
+        throw new ActionLinkError(
+          "INVALID_ADDRESS",
+          legs.length > 1
+            ? `A recipient address in this link is not a valid CKB address: ${leg.to}`
+            : "The recipient address in this link is not a valid CKB address.",
+          cause instanceof Error ? cause.message : undefined,
+        );
+      }
+    }),
+  );
 
   const tx = ccc.Transaction.from({
-    outputs: [{ lock: recipient.script, capacity }],
-    outputsData: ["0x"],
+    outputs: recipients.map((recipient, i) => ({
+      lock: recipient.script,
+      capacity: parseAmountToShannons(legs[i]!.amount),
+    })),
+    outputsData: legs.map(() => "0x"),
   });
 
-  // A cell must hold enough capacity to pay for its own storage. Below that the
-  // node rejects the transaction, so catch it here with an explanation instead
-  // of letting the wallet surface a raw RPC error after the user has signed.
-  const minimum = BigInt(tx.outputs[0]!.occupiedSize) * SHANNONS_PER_CKB;
-  if (capacity < minimum) {
-    throw new ActionLinkError(
-      "BELOW_MIN_CAPACITY",
-      `This would send ${displayAmount} CKB, but a cell for this recipient ` +
-        `must hold at least ${formatShannonsToCkb(minimum)} CKB.`,
-    );
+  /*
+   * A cell must hold enough capacity to pay for its own storage, and CCC does
+   * not refuse one that cannot — it silently raises the output to the minimum.
+   *
+   * That is a reasonable default for a wallet and a dangerous one here. Ask for
+   * 1 CKB and the built transaction carries 61. The summary reads amounts off
+   * the transaction rather than off the intent, deliberately, so it would then
+   * report 61 CKB — accurately, for a payment nobody agreed to.
+   *
+   * The floor is therefore checked against what was *requested*, and the built
+   * output is then compared against it, so a silent adjustment in any direction
+   * is a refusal rather than something the preview inherits. The schema already
+   * refuses anything under the floor that holds for every possible lock; this
+   * is the exact figure for these specific recipients, and the only place the
+   * true number can be known.
+   */
+  for (const [index, output] of tx.outputs.entries()) {
+    const who = legs.length > 1 ? `recipient ${index + 1}` : "this recipient";
+    const requested = parseAmountToShannons(legs[index]!.amount);
+    const minimum = BigInt(output.occupiedSize) * SHANNONS_PER_CKB;
+
+    if (requested < minimum) {
+      throw new ActionLinkError(
+        "BELOW_MIN_CAPACITY",
+        `This would send ${legs[index]!.amount} CKB to ${who}, but their cell ` +
+          `must hold at least ${formatShannonsToCkb(minimum)} CKB.`,
+      );
+    }
+    if (output.capacity !== requested) {
+      throw new ActionLinkError(
+        "UNACCOUNTED_OUTPUT",
+        "This transaction does not carry the amount this link asked for, so it " +
+          "will not be offered for signing.",
+        `output ${index}: requested ${requested}, built ${output.capacity}`,
+      );
+    }
   }
 
   await tx.completeInputsByCapacity(signer);
   await tx.completeFeeBy(signer, feeRate);
 
-  // CCC appends its change cell, so the payment stays at index 0. summarise()
-  // re-checks that rather than trusting it.
-  return { tx, paymentIndex: 0, recipient: recipient.script };
+  // CCC appends its change cell after ours, so the intended outputs keep their
+  // positions. summarise() re-checks that rather than trusting it.
+  return {
+    tx,
+    intended: recipients.map((recipient, index) => ({ index, recipient: recipient.script })),
+  };
 }
 
 /**
@@ -317,24 +369,16 @@ export async function buildAction(
 
   switch (intent.action) {
     case "transfer": {
-      const plan = await planPayment(
-        intent.to,
-        parseAmountToShannons(intent.amount),
-        intent.amount,
-        signer,
-        feeRate,
-      );
+      const plan = await planPayments([{ to: intent.to, amount: intent.amount }], signer, feeRate);
       return { tx: plan.tx, summary: await summarise(plan, intent, signer) };
     }
     case "request": {
       const amount = payerAmountFor(intent, options.amount);
-      const plan = await planPayment(
-        intent.to,
-        parseAmountToShannons(amount),
-        amount,
-        signer,
-        feeRate,
-      );
+      const plan = await planPayments([{ to: intent.to, amount }], signer, feeRate);
+      return { tx: plan.tx, summary: await summarise(plan, intent, signer) };
+    }
+    case "split": {
+      const plan = await planPayments(intent.payments, signer, feeRate);
       return { tx: plan.tx, summary: await summarise(plan, intent, signer) };
     }
     default: {
