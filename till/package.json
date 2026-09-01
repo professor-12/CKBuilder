@@ -1,0 +1,11 @@
+{
+  "name": "till",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Till — self-custodial payments for CKB: invoices, point-of-sale, on-chain settlement detection, receipts.",
+  "scripts": {
+    "test": "pnpm -C packages/sdk test",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm -C apps/web build"
+  }
+}
