@@ -5,21 +5,25 @@
 
 # Independent Project
 
-## Research Week — Screening the Fiber Opportunity Map, and Choosing Quarry
+## Research Week — Screening the Fiber Opportunity Map: Twelve Directions, Three Worth Testing
 
 ## Overview
 
 Resumed the series after September, which went to university exams.
 
-Took Neon's last two rounds of feedback as the brief: Action Links overlapped a [draft protocol](https://talk.nervos.org/t/10315) another builder had already published, Till overlapped the payment polling Blackbox POS already does, and the next idea should come out of the [opportunity map](https://talk.nervos.org/t/10665) and reach an MVP by the end of the month.
+Took Neon's last two rounds of feedback as the brief: Action Links overlapped a [draft protocol](https://talk.nervos.org/t/10315) another builder had already published, Till overlapped the payment polling Blackbox POS already does, and the next idea should come out of the [opportunity map](https://talk.nervos.org/t/10665).
 
 Spent the week on research only: the opportunity map end to end, the Spark committee's August guidance, both hackathon results, core-developer reviews on the CKBuilder tracker, the 9 October DevRel AMA, and about 80 Fiber, payments and infrastructure threads posted since May.
 
-Screened twelve directions against five tests. Eleven failed, almost all because someone is already building them — nine of the twelve gained a new project after 22 August, the map's evidence date.
+Screened twelve directions against five tests. Most failed because someone is already building them — nine of the twelve gained a new project after 22 August, the map's evidence date.
 
-Selected **Quarry**: CKB chain data (JSON-RPC and indexer queries) sold per request by independent node operators, paid over Fiber, and consumed by dApps, bots and AI agents through a drop-in CCC transport. phroi asked for it in writing, Jan Xie called it "an interesting use case for Fiber", it sits on the problem DevRel names first (data access), it needs Fiber for reasons that can be stated in numbers, and searches found nobody building it.
+Did not pick a project yet. Narrowed the field to three hypotheses worth testing, because the research so far shows what people have asked for, not what anyone will actually use:
 
-Wrote no code. The MVP plan below runs from 12 to 31 October and ends with a Spark proposal.
+* **Quarry** — CKB chain data (JSON-RPC and indexer queries) sold per request by independent node operators and paid over Fiber. The strongest on paper: phroi asked for it in writing, Jan Xie called it "an interesting use case for Fiber", it sits on the problem DevRel names first (data access), and searches found nobody building it.
+* **Paid peer-to-peer data exchange** — Jan Xie's "fiberized DHT", where peers pay per chunk downloaded and earn per chunk uploaded. The clearest two-way workload I found.
+* **Agents paying people for small tasks** — attractive, but with no buyer identified yet.
+
+Wrote no code. The next three weeks are experiments and conversations designed to tell these three apart — measuring Fiber itself, and asking the people who would have to use each one — before anything is built.
 
 ---
 
@@ -53,7 +57,7 @@ Turned them into five tests:
 2. **Absent** — Nervos Talk, the CKBuilder tracker and GitHub show nobody building it.
 3. **Needs Fiber** — for a property the map names (CKB or UDT assets, multi-hop routing, bidirectional sessions, browser custody, CKB-linked rights, Lightning interop), not because Fiber is fast.
 4. **Creates value** — someone pays for something produced, not just a more convenient way to move money.
-5. **Buildable and checkable by 31 October** — one developer, testnet, with a verification plan a reviewer can run.
+5. **Buildable and checkable in weeks** — one developer, testnet, with a verification plan a reviewer can run.
 
 ---
 
@@ -74,18 +78,20 @@ Turned them into five tests:
 | 11 | Streaming content and paywalls | [Fiber Audio Player](https://talk.nervos.org/t/10073), [Backr](https://talk.nervos.org/t/10191), [FiberTap](https://talk.nervos.org/t/10655), [FiberSplit](https://talk.nervos.org/t/10579) | 2 |
 | 12 | P2P fiat ramp and mobile money | [Twine](https://talk.nervos.org/t/10741), [Dular](https://talk.nervos.org/t/10717) | 2 |
 
-Set two more aside for scope rather than merit:
+Kept two more open for further research:
 
-* Jan Xie's [fiberized DHT](https://talk.nervos.org/t/8957/6), where every peer pays per chunk downloaded and earns per chunk uploaded — the clearest bidirectional workload I found, and the answer to one of the map's open questions, but too large for one month.
-* Agents paying people for micro-tasks — attractive, but I could not name a buyer.
+* Jan Xie's [fiberized DHT](https://talk.nervos.org/t/8957/6), where every peer pays per chunk downloaded and earns per chunk uploaded — the clearest bidirectional workload I found, and an answer to one of the map's open questions. The open question is whether one person can show it working in weeks rather than months.
+* Agents paying people for small tasks — attractive. The open question is who the first buyer would be.
 
 Learned that "absent" is the test that kills ideas, and that it cannot be checked once: the field moved during the week I was checking it.
 
 ---
 
-## The Selected Project: Quarry
+## Leading Hypothesis: Quarry
 
-**Pay-per-query CKB data from independent node operators, settled over Fiber.** Operators sell RPC and indexer queries per request; clients pay over Fiber; any CCC app switches by passing a transport.
+**Pay-per-query CKB data from independent node operators, settled over Fiber.** Operators would sell RPC and indexer queries per request; clients would pay over Fiber; any CCC app could switch by passing a transport.
+
+This is the candidate the research supports best so far, not a decision. The rest of this section is what would have to be true for it to be worth building, and how each part can be tested.
 
 ### The problem, in facts
 
@@ -152,18 +158,18 @@ One call, start to finish:
 4. It retries with the payment hash and preimage. The gate confirms the invoice is paid on its own node, issues a credit, debits one call and forwards the request to its CKB node.
 5. The next 499 calls ride the credit. If operator A errors or times out, the transport moves to operator B, which the same channel can already pay.
 
-Reused rather than rebuilt, as the map asks: FNN v0.9.1 invoices and routing; the 402 exchange shape already proven by [Fiber Paid HTTP](https://github.com/a19q3/fiber-paid-http) (MIT) and fiber-l402; and `@fiberlatch/access` (ISC) for signed limited-use receipts where it fits. Will not use FNN's x402 module: it exists only in [draft PR #1301](https://github.com/nervosnetwork/fiber/pull/1301), unmerged.
+Would reuse rather than rebuild, as the map asks: FNN v0.9.1 invoices and routing; the 402 exchange shape already proven by [Fiber Paid HTTP](https://github.com/a19q3/fiber-paid-http) (MIT) and fiber-l402; and `@fiberlatch/access` (ISC) for signed limited-use receipts where it fits. Would not use FNN's x402 module: it exists only in [draft PR #1301](https://github.com/nervosnetwork/fiber/pull/1301), unmerged.
 
-New code is three pieces: the CCC transport (budget, price caps, operator choice, failover); the operator gate (price table, credit ledger, upstream forwarding); and the measurement harness.
+New code would be three pieces: the CCC transport (budget, price caps, operator choice, failover); the operator gate (price table, credit ledger, upstream forwarding); and a measurement harness.
 
 ### Trust model
 
 * **Bounded prepayment.** The most a client can lose to a dishonest operator is one unused credit bundle. It never pays above its cap, and never pays an invoice whose amount differs from the quoted price — the week-13 rule that no figure a human chose is silently rewritten, applied to prices.
-* **Data correctness.** The MVP trusts an operator's answers the way CCC trusts any RPC today; Hanssen describes that as current practice and recommends it for now. Cross-checking critical reads across two operators, which phroi asked for, is a later milestone, and phroi's [light-client snapshots](https://github.com/phroi/light-client-snapshots) are the first place to look for verifiable data.
+* **Data correctness.** A first version would trust an operator's answers the way CCC trusts any RPC today; Hanssen describes that as current practice and recommends it for now. Cross-checking critical reads across two operators, which phroi asked for, is a later milestone, and phroi's [light-client snapshots](https://github.com/phroi/light-client-snapshots) are the first place to look for verifiable data.
 * **No custody.** Clients keep their own Fiber node and keys; operators hold nothing beyond the bundle.
 * **Fiber RPC stays private.** The gate talks to its own FNN locally, with [Biscuit auth](https://github.com/nervosnetwork/fiber/blob/develop/docs/biscuit-auth.md) enabled.
 
-### What the MVP will measure
+### What a prototype would measure
 
 Each measure answers a question the map says the ecosystem cannot yet answer:
 
@@ -175,53 +181,54 @@ Each measure answers a question the map says the ecosystem cannot yet answer:
 | Steps an operator needed before receiving the first payment | "Can an independent provider receive repeated payments without manually solving inbound liquidity?" |
 | Calls served by an operator I do not run | "a provider … who was not created for the demo" |
 
-Bundle size is the experiment's main dial: one call per payment is no prepayment risk and maximum latency, 500 calls per payment is the reverse. The trial will publish the curve between them.
+Bundle size is the experiment's main dial: one call per payment is no prepayment risk and maximum latency, 500 calls per payment is the reverse. A trial would publish the curve between them.
 
-### How I would know I am wrong
+### How I would know it is wrong
 
-Will stop and publish the negative result if any of these holds by 31 October:
+Would drop Quarry in favour of one of the other two candidates if any of these holds:
 
-* More than 5% of credit renewals fail after retries on testnet, so clients would stall.
-* No operator other than me will run the gate for a testnet trial.
-* No consumer other than my own bot will try it.
+* Routed testnet payments fail often enough — more than 5% of renewals after retries — that clients would stall.
+* No node runner I ask is willing to run an operator for a testnet trial.
+* No bot or app builder I ask would point their reads at it.
 
 ---
 
-## MVP Plan to 31 October
+## Research Plan, Next Three Weeks
 
-| Dates | Milestone | Done when |
+| Week | Work | Output |
 |---|---|---|
-| 12–14 Oct | **M0 spike.** Client and operator FNN v0.9.1 nodes on testnet, each with a channel to a public hub; pay an operator invoice across the hub. | A routed payment's hash and fee are recorded; per-payment latency is measured; the choice between reusing Fiber Paid HTTP and a thin TypeScript gate is written down with reasons. |
-| 15–21 Oct | **M1 build.** Operator gate and CCC transport, with fixture tests in the Till style. | Tests cover 402 → pay → retry → serve; an overpriced invoice is refused; a replayed proof is refused; an exhausted budget is refused; a failing operator triggers failover. |
-| 22–28 Oct | **M2 live trial.** Gate on a VPS beside a synced testnet node; Till's settlement watcher re-pointed through Quarry as the first consumer. | The measurement table above is filled from real runs; raw data and harness are committed; independent operators invited (NNCBN, the Atlantic node, the Service Runner author). |
-| 29–31 Oct | **M3 write-up.** Nervos Talk post, CKBuilder tracker issue, Spark draft. | Anyone with a faucet claim can re-run the trial from the README. |
+| 17 (to 18 Oct) | **Fiber spike.** Two FNN v0.9.1 testnet nodes paying each other through a public hub: per-payment latency, routing fees, and how a new node gets inbound capacity. | Raw measurements committed — the first evidence of whether per-request pricing is viable at all. |
+| 17 (to 18 Oct) | **Conversations.** Ask phroi, node runners from the revenue-layer thread (NNCBN, the Atlantic node, the Service Runner author) and two bot builders (CrowdCell, CKAutomata) whether they would operate or pay. | Their answers, quoted with permission. |
+| 18 (to 25 Oct) | **The other two candidates.** The same depth of prior-art and feasibility research on paid peer-to-peer data exchange and agent-funded tasks, including the Lightning projects that tried them first. | A side-by-side comparison of all three on evidence, not preference. |
+| 19 (to 1 Nov) | **Decision.** Choose one, or report that none survived, with the reasons. Open a CKBuilder tracker issue so core reviewers can challenge it before any build starts. | A direction with evidence behind it, and a prototype plan. |
 
-The operator side needs a VPS: a synced CKB node will not fit on my development machine. Until M2 the gate may front a public endpoint, and every result produced that way will say so.
+If Quarry survives, the operator side will need a VPS: a synced CKB node will not fit on my development machine.
 
 ---
 
-## Grant Path
+## Funding, If a Candidate Survives
 
-* **CKBuilder tracker issue** at M1, asking core reviewers one question first: is per-request paid data a need they recognise, or a gateway nobody needs? That is chenyukang's question to Spindle, asked of myself before anyone else has to.
-* **Spark** after M3, for six to eight weeks: a mainnet trial with at least two independent operators, cross-checked reads, and an agent-facing MCP tool server. The budget will be derived from those deliverables, within the $1,000 standard. The verification plan is the committed harness, run against named operators, reproducing the published numbers.
-* **Community Fund DAO** only if the Spark trial shows independent operators and consumers using it — the path the [Spark Q2 report](https://talk.nervos.org/t/10396) describes for ckb-probe.
+* **CKBuilder tracker issue** with the decision, asking core reviewers one question first: is this a need they recognise? That is chenyukang's question to Spindle, asked of myself before anyone else has to.
+* **Spark** once a prototype runs, for six to eight weeks, with a budget derived from the deliverables and within the $1,000 standard, and a verification plan a reviewer can re-run.
+* **Community Fund DAO** only if a Spark trial shows independent people using it — the path the [Spark Q2 report](https://talk.nervos.org/t/10396) describes for ckb-probe.
 
 ---
 
 ## Housekeeping
 
 * Till's USDI token preset is obsolete since IPN announced USDI's shutdown; it will be marked deprecated and the README corrected.
-* Neither Action Links nor Till is on the [CKBuilder project tracker](https://github.com/Nervos-Community-Catalyst/CKBuilder-projects). Both will be added, with Quarry, so their status sits next to everyone else's.
+* Neither Action Links nor Till is on the [CKBuilder project tracker](https://github.com/Nervos-Community-Catalyst/CKBuilder-projects). Both will be added so their status sits next to everyone else's.
 
 ---
 
 ## What Is Not Yet Verified
 
-* No code exists. Every design statement above is a plan.
+* No code exists. Every design statement above is a hypothesis.
 * Demand is inferred from written requests, not observed use. Nobody has yet paid for a CKB read.
-* No independent operator has agreed to run the gate.
-* Per-payment latency on testnet is unmeasured. If Fiber payments are too slow even with bundles, the design changes.
-* Whether a public hub contributes inbound capacity to every new operator channel is unconfirmed. The public-node guide's worked example shows the hub contributing 250 CKB to a 499 CKB channel; M0 will check it.
+* No node runner or app builder has been asked yet.
+* Per-payment latency on testnet is unmeasured. If Fiber payments are too slow even with bundles, Quarry's design changes or it drops down the list.
+* Whether a public hub contributes inbound capacity to every new channel is unconfirmed. The public-node guide's worked example shows the hub contributing 250 CKB to a 499 CKB channel; the week-17 spike will check it.
+* The other two candidates have had far less research than Quarry; week 18 closes that gap.
 * The novelty searches are a snapshot of 11 October.
 
 ---
@@ -230,6 +237,6 @@ The operator side needs a VPS: a synced CKB node will not fit on my development 
 
 * Novelty decays. Nine of twelve directions gained a new project after the map's evidence date, so "nobody is building this" has to be re-checked the week a proposal goes out, not the week the idea arrives.
 * The tests that matter were already written by the reviewers: the map's "why Fiber", Spark's line between moving money and creating value, and chenyukang's "is there an actual need". Screening against them replaced guessing.
-* The best candidate was not in a hot category but in an old thread, where a respected developer described a real pain and a co-founder agreed — and a year passed without anyone building it.
+* The strongest candidate so far was not in a hot category but in an old thread, where a respected developer described a real pain and a co-founder agreed — and a year passed without anyone building it.
 * The L1 minimum cell is Fiber's plainest argument for small payments: anything under 61 CKB cannot be a transfer at all. I first met that number as a bug.
 * Check facts at the source. A demo README describes Fiber's "native x402 module"; the code shows an unmerged draft PR, so the plan does not depend on it.
